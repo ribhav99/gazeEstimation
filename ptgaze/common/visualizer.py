@@ -59,6 +59,7 @@ class Visualizer:
         assert self.image is not None
         assert point0.shape == point1.shape == (3, )
         points3d = np.vstack([point0, point1])
+        print(f'3D points: {points3d}')
         points2d = self._camera.project_points(points3d)
         pt0 = self._convert_pt(points2d[0])
         pt1 = self._convert_pt(points2d[1])
