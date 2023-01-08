@@ -3,6 +3,7 @@ import logging
 import pathlib
 import warnings
 import itertools
+import sympy
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -160,13 +161,18 @@ def main():
 
 def _compute_intersections(points):
     if points:
-        cords = [(int(points[i]), int(points[i+1])) for i in range(0, len(points) - 1, 2)]
+        cords = [(int(points[i]), int(points[i+1]), int(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
         combs_of_lines = list(itertools.combinations(lines, 2))
         intersections = []
         for i in combs_of_lines:
-            intersec = lineLineIntersection(Point(i[0][0][0], i[0][0][1]), Point(i[0][1][0], i[0][1][1]), Point(i[1][0][0], i[1][0][1]), Point(i[1][1][0], i[1][1][1]))
-            intersections.append((intersec.x, intersec.y))
+            line1 = sympy.Line3D(sympy.Point3D(i[0][0][0], i[0][0][1], i[0][0][2]),
+                sympy.Point3D(i[0][1][0], i[0][1][1], i[0][1][2]))
+            line2 = sympy.Line3D(sympy.Point3D(i[1][0][0], i[1][0][1], i[1][0][2]),
+                sympy.Point3D(i[1][1][0], i[1][1][1], i[1][1][2]))
+            intersec = line1.intersection(line2)
+            print(f'INTERSECTION', line1, line2)
+            intersections.append((intersec.x, intersec.y, intersec.z))
         return intersections
     return False
 

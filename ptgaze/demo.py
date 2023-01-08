@@ -254,23 +254,50 @@ class Demo:
         gaze points are pt0 and pt1
         '''
         # get equation of line pt0, pt1
-        if pt0[0] == pt1[0]:
-            slope = np.inf
-            y_intercept = np.inf
-        else:
-            slope = (pt0[1] - pt1[1]) / (pt0[0] - pt1[0])
-            y_intercept = pt0[1] - (slope * pt0[0])
+        l = pt1[0] - pt0[0]
+        m = pt1[1] - pt0[1]
+        n = pt1[2] - pt0[2]
+        x_flag = False
+        y_flag = False
+        z_flag = False
+
         for point in self.config.intersections:
             # check if point (with some error margin) lies on line pt0, pt1
             # if it does then return True
-            y = (slope * point[0]) + y_intercept
-            if y - error_factor <= point[1] <= y + error_factor:
-                return True
-            if slope == 0:
-                x = np.inf
+
+            # Check x
+            if m != 0:
+                x = (((point[1] - pt1[1])/m) * l) + pt1[0]
             else:
-                x = (point[1] - y_intercept) / slope
+                x = (np.inf * l)
+                x = 0 if math.isnan(x) else x
+                x += pt1[0]
             if x - error_factor <= point[0] <= x + error_factor:
+                x_flag = True
+            
+            # Check y
+            if n != 0:
+                y = (((point[2] - pt1[2])/n) * m) + pt1[1]
+            else:
+                y = (np.inf * m)
+                y = 0 if math.isnan(x) else y
+                y += pt1[1]
+            if y - error_factor <= point[1] <= y + error_factor:
+                y_flag = True
+            
+            # Check z
+            if l != 0:
+                z = (((point[0] - pt1[0])/l) * n) + pt1[2]
+            else:
+                z = (np.inf * n)
+                z = 0 if math.isnan(x) else z
+                z += pt1[2]
+            if z - error_factor <= point[2] <= z + error_factor:
+                z_flag = True
+
+            if x_flag and y_flag and z_flag:
                 return True
+
+            
 
         return False
