@@ -142,7 +142,7 @@ def main():
         generate_dummy_camera_params(config)
 
     OmegaConf.set_readonly(config, True)
-    logger.info(OmegaConf.to_yaml(config))
+    # logger.info(OmegaConf.to_yaml(config))
 
     if config.face_detector.mode == 'dlib':
         download_dlib_pretrained_model()
