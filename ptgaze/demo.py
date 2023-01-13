@@ -41,6 +41,8 @@ class Demo:
         self.show_normalized_image = self.config.demo.show_normalized_image
         self.show_template_model = self.config.demo.show_template_model
 
+        self.predictions = []
+
     def run(self) -> None:
         if self.config.demo.use_camera or self.config.demo.video_path:
             self._run_on_video()
@@ -48,6 +50,9 @@ class Demo:
             self._run_on_image()
         else:
             raise ValueError
+        with open(f'{self.config.demo.video_path[:-4]}.txt', 'w') as f:
+            for i in self.predictions:  
+                f.write(str(i) + '\n')
 
     def _run_on_image(self):
         image = cv2.imread(self.config.demo.image_path)
@@ -247,7 +252,7 @@ class Demo:
             self.visualizer.write_prediction(pred)
         return pt0, pt1
 
-    def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=10):
+    def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=5):
         '''
         gaze_array is a list of 2d points where gaze was being made. 
         Using that information, predict whether gaze is being made when
@@ -256,21 +261,13 @@ class Demo:
         # get equation of line pt0, pt1
         if pt0[0] == pt1[0]:
             slope = np.inf
-            y_intercept = np.inf
         else:
             slope = (pt0[1] - pt1[1]) / (pt0[0] - pt1[0])
-            y_intercept = pt0[1] - (slope * pt0[0])
-        for point in self.config.intersections:
+        for m in self.config.slopes:
             # check if point (with some error margin) lies on line pt0, pt1
             # if it does then return True
-            y = (slope * point[0]) + y_intercept
-            if y - error_factor <= point[1] <= y + error_factor:
+            if m - error_factor <= slope <= m + error_factor:
+                self.predictions.append(True)
                 return True
-            if slope == 0:
-                x = np.inf
-            else:
-                x = (point[1] - y_intercept) / slope
-            if x - error_factor <= point[0] <= x + error_factor:
-                return True
-
+        self.predictions.append(False)
         return False
