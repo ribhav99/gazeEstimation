@@ -11,6 +11,7 @@ from omegaconf import DictConfig
 from common import Face, FacePartsName, Visualizer
 from gaze_estimator import GazeEstimator
 from utils import get_3d_face_model
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -254,6 +255,7 @@ class Demo:
         gaze points are pt0 and pt1
         '''
         # get equation of line pt0, pt1
+        pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)), 'a')
         if pt0[0] == pt1[0]:
             slope = np.inf
             y_intercept = np.inf
@@ -271,6 +273,7 @@ class Demo:
             else:
                 x = (point[1] - y_intercept) / slope
             if x - error_factor <= point[0] <= x + error_factor:
+                pred_file.write('True\n')
                 return True
-
+        pred_file.write('False\n')
         return False
