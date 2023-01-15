@@ -261,7 +261,7 @@ class Demo:
         gaze points are pt0 and pt1
         '''
         # get equation of line pt0, pt1
-        pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)), 'a')
+        pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
         if pt0[0] == pt1[0]:
             slope = np.inf
             y_intercept = np.inf
