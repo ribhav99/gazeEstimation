@@ -156,7 +156,7 @@ class Demo:
         else:
             raise ValueError
         output_path = self.output_dir / output_name
-        writer = cv2.VideoWriter(output_path.as_posix(), fourcc, self.config.fps,
+        writer = cv2.VideoWriter(output_path.as_posix(), fourcc, int(self.config.fps),
                                  (self.gaze_estimator.camera.width,
                                   self.gaze_estimator.camera.height))
         if writer is None:
