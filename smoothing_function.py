@@ -1,19 +1,27 @@
 import cv2
 from collections import Counter
+from tqdm import tqdm
 
 def smooth_predictions(predictions, video, window_size=10):
     with open(predictions, 'r') as f:
         preds = f.readlines()
     cap = cv2.VideoCapture(video)
     fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(f'{video[:-4]}_smoothed.avi', fourcc, fps, (int(cap.get(3)),int(cap.get(4))))
 
     smoothed_preds = ['' for _ in range(len(preds))]
     for i in range(len(preds) - window_size):
         window = preds[i:i + window_size]
-        most_common = Counter(window).most_common(1)[0][0]
-        smoothed_preds[i+ window_size//2] = most_common
+        
+        # most_common = Counter(window).most_common(1)[0][0]
+        # smoothed_preds[i+ window_size//2] = most_common
+        seen_true = window.count('True\n')
+        if seen_true > 0:
+            smoothed_preds[i+ window_size//2] = 'True\n'
+        else:
+            smoothed_preds[i+ window_size//2] = 'False\n'
     
     front_fill = back_fill = ''
     index = 0
@@ -35,6 +43,7 @@ def smooth_predictions(predictions, video, window_size=10):
     # assert len(smoothed_preds) == len(preds)
 
     count = 0
+    pbar = tqdm(total=total_frames)
     while True:
         ret, frame = cap.read()
         if not ret or count >= len(smoothed_preds):
@@ -44,12 +53,14 @@ def smooth_predictions(predictions, video, window_size=10):
         cv2.putText(frame, f"Smoothed Gaze: {smoothed_preds[count].strip()}", (150, 200), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
         count += 1
         out.write(frame)
+        pbar.update(1)
 
     cap.release()
     out.release()
+    pbar.close()
     
     cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
-    smooth_predictions('assets/inputs/gazeEstimation4.txt', 'assets/results/gazeEstimation4.mp4')
+    smooth_predictions('temp/female_session1_fps20.txt', 'temp/female_session1_fps20.avi')
