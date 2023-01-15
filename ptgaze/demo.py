@@ -274,6 +274,8 @@ class Demo:
                 x = (point[1] - y_intercept) / slope
             if x - error_factor <= point[0] <= x + error_factor:
                 pred_file.write('True\n')
+                pred_file.close()
                 return True
         pred_file.write('False\n')
+        pred_file.close()
         return False
