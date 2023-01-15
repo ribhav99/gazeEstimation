@@ -76,6 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--log', action='store_true', default=False)
     parser.add_argument('--gaze_array', nargs='+', default=False)
+    parser.add_argument('--fps', default=20)
     return parser.parse_args()
 
 
@@ -122,6 +123,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.log = True if args.log else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
     config.intersections = _compute_intersections(config.gaze_array)
+    config.fps = args.fps
     return config
 
 

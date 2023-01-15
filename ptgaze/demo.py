@@ -12,6 +12,7 @@ from common import Face, FacePartsName, Visualizer
 from gaze_estimator import GazeEstimator
 from utils import get_3d_face_model
 import os
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,6 +68,8 @@ class Demo:
             cv2.imwrite(output_path.as_posix(), self.visualizer.image)
 
     def _run_on_video(self) -> None:
+        total = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        pbar = tqdm(total=total)
         while True:
             if self.config.demo.display_on_screen:
                 self._wait_key()
@@ -76,13 +79,16 @@ class Demo:
             ok, frame = self.cap.read()
             if not ok:
                 break
+
             self._process_image(frame)
+            pbar.update(1)
 
             if self.config.demo.display_on_screen:
                 cv2.imshow('frame', self.visualizer.image)
         self.cap.release()
         if self.writer:
             self.writer.release()
+        pbar.close()
 
     def _process_image(self, image) -> None:
         undistorted = cv2.undistort(
@@ -150,7 +156,7 @@ class Demo:
         else:
             raise ValueError
         output_path = self.output_dir / output_name
-        writer = cv2.VideoWriter(output_path.as_posix(), fourcc, 30,
+        writer = cv2.VideoWriter(output_path.as_posix(), fourcc, self.config.fps,
                                  (self.gaze_estimator.camera.width,
                                   self.gaze_estimator.camera.height))
         if writer is None:
