@@ -63,7 +63,7 @@ class Visualizer:
         pt0 = self._convert_pt(points2d[0])
         pt1 = self._convert_pt(points2d[1])
         cv2.line(self.image, pt0, pt1, color, lw, cv2.LINE_AA)
-        cv2.putText(self.image, f"pt0: {pt0}, pt1: {pt1}", (80, 80), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+        cv2.putText(self.image, f"pt0: {pt0}, pt1: {pt1}", (80, 80), cv2.FONT_HERSHEY_PLAIN, 3, 255, 3)
         return pt0, pt1
 
     def draw_model_axes(self, face: Face, length: float, lw: int = 2) -> None:
@@ -86,4 +86,4 @@ class Visualizer:
             cv2.line(self.image, center, pt, color, lw, cv2.LINE_AA)
     
     def write_prediction(self, prediction):
-        cv2.putText(self.image, f"Gaze: {prediction}", (150, 150), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+        cv2.putText(self.image, f"Gaze: {prediction}", (150, 150), cv2.FONT_HERSHEY_PLAIN, 3, 255, 3)

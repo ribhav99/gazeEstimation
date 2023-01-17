@@ -100,6 +100,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     if config.device == 'cuda' and not torch.cuda.is_available():
         config.device = 'cpu'
         warnings.warn('Run on CPU because CUDA is not available.')
+        print('Run on CPU because CUDA is not available.')
     if args.image and args.video:
         raise ValueError('Only one of --image or --video can be specified.')
     if args.image:

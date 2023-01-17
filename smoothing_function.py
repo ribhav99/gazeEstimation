@@ -50,7 +50,7 @@ def smooth_predictions(predictions, video, window_size=10):
             print(f'breaking after {count} frames')
             break
 
-        cv2.putText(frame, f"Smoothed Gaze: {smoothed_preds[count].strip()}", (150, 200), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+        cv2.putText(frame, f"Smoothed Gaze: {smoothed_preds[count].strip()}", (150, 200), cv2.FONT_HERSHEY_PLAIN, 3, 255, 3)
         count += 1
         out.write(frame)
         pbar.update(1)
@@ -63,4 +63,4 @@ def smooth_predictions(predictions, video, window_size=10):
 
 
 if __name__ == '__main__':
-    smooth_predictions('temp/female_session1_fps20.txt', 'temp/female_session1_fps20.avi')
+    smooth_predictions('temp/female_session1_fps20.txt', 'temp/female_session1_fps20.avi', 5)
