@@ -6,6 +6,7 @@ import itertools
 
 import torch
 from omegaconf import DictConfig, OmegaConf
+import os
 
 from demo import Demo
 from utils import (check_path_all, download_dlib_pretrained_model,
@@ -76,6 +77,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--log', action='store_true', default=False)
     parser.add_argument('--gaze_array', nargs='+', default=False)
+    parser.add_argument('--no_gaze_array', nargs='+', default=False)
     parser.add_argument('--fps', default=20)
     return parser.parse_args()
 
@@ -123,7 +125,9 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
             config.demo.output_dir = 'outputs'
     config.log = True if args.log else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
+    config.no_gaze_array = args.no_gaze_array if args.no_gaze_array else False
     config.intersections = _compute_intersections(config.gaze_array)
+    config.x_intersections = _compute_intersections(config.no_gaze_array)
     config.fps = args.fps
     return config
 
@@ -156,6 +160,11 @@ def main():
             download_mpiifacegaze_model()
         elif config.mode == 'ETH-XGaze':
             download_ethxgaze_model()
+    
+    # remove output file if it exists
+    file_name = os.path.join(config.demo.output_dir, os.path.basename(config.demo.video_path)[:-4]) + '.txt'
+    if os.path.isfile(file_name):
+        os.remove(file_name)
 
     check_path_all(config)
     demo = Demo(config)

@@ -260,28 +260,58 @@ class Demo:
         Using that information, predict whether gaze is being made when
         gaze points are pt0 and pt1
         '''
-        # get equation of line pt0, pt1
-        pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
-        if pt0[0] == pt1[0]:
-            slope = np.inf
-            y_intercept = np.inf
-        else:
-            slope = (pt0[1] - pt1[1]) / (pt0[0] - pt1[0])
-            y_intercept = pt0[1] - (slope * pt0[0])
-        for point in self.config.intersections:
-            # check if point (with some error margin) lies on line pt0, pt1
-            # if it does then return True
-            y = (slope * point[0]) + y_intercept
-            if y - error_factor <= point[1] <= y + error_factor:
-                return True
-            if slope == 0:
-                x = np.inf
+        if self.config.gaze_array and not self.config.no_gaze_array:
+            # get equation of line pt0, pt1
+            pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
+            if pt0[0] == pt1[0]:
+                slope = np.inf
+                y_intercept = np.inf
             else:
-                x = (point[1] - y_intercept) / slope
-            if x - error_factor <= point[0] <= x + error_factor:
+                slope = (pt0[1] - pt1[1]) / (pt0[0] - pt1[0])
+                y_intercept = pt0[1] - (slope * pt0[0])
+            for point in self.config.intersections:
+                # check if point (with some error margin) lies on line pt0, pt1
+                # if it does then return True
+                y = (slope * point[0]) + y_intercept
+                if y - error_factor <= point[1] <= y + error_factor:
+                    return True
+                if slope == 0:
+                    x = np.inf
+                else:
+                    x = (point[1] - y_intercept) / slope
+                if x - error_factor <= point[0] <= x + error_factor:
+                    pred_file.write('True\n')
+                    pred_file.close()
+                    return True
+            pred_file.write('False\n')
+            pred_file.close()
+            return False
+
+
+        else:
+            # new method of comparing gaze_array and no_gaze_array points
+            # compare distance of line from sum of distances of gaze vs no_gaze arrays
+            # note that the number of lines/intersection points for each should be
+            # the same to remove bias by not adding extra distances.
+            pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
+            gaze_distance = np.inf
+            no_gaze_distance = np.inf
+            for point in self.config.intersections:
+                distance = abs((pt1[0]-pt0[0]) * (pt0[1]-point[1]) \
+                            - (pt0[0]-point[0]) * (pt1[1]-pt0[1])) \
+                            / math.sqrt((pt1[0]-pt0[0])**2 + (pt1[1]-pt0[1])**2)
+                gaze_distance = min(distance, gaze_distance)
+            
+            for point in self.config.x_intersections:
+                distance = abs((pt1[0]-pt0[0]) * (pt0[1]-point[1]) \
+                            - (pt0[0]-point[0]) * (pt1[1]-pt0[1])) \
+                            / math.sqrt((pt1[0]-pt0[0])**2 + (pt1[1]-pt0[1])**2)
+                no_gaze_distance = min(distance, no_gaze_distance)
+            
+            if gaze_distance <= no_gaze_distance:
                 pred_file.write('True\n')
                 pred_file.close()
                 return True
-        pred_file.write('False\n')
-        pred_file.close()
-        return False
+            pred_file.write('False\n')
+            pred_file.close()
+            return False

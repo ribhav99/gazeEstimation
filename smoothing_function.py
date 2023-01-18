@@ -15,13 +15,13 @@ def smooth_predictions(predictions, video, window_size=10):
     for i in range(len(preds) - window_size):
         window = preds[i:i + window_size]
         
-        # most_common = Counter(window).most_common(1)[0][0]
-        # smoothed_preds[i+ window_size//2] = most_common
-        seen_true = window.count('True\n')
-        if seen_true > 0:
-            smoothed_preds[i+ window_size//2] = 'True\n'
-        else:
-            smoothed_preds[i+ window_size//2] = 'False\n'
+        most_common = Counter(window).most_common(1)[0][0]
+        smoothed_preds[i+ window_size//2] = most_common
+        # seen_true = window.count('True\n')
+        # if seen_true > 0:
+        #     smoothed_preds[i+ window_size//2] = 'True\n'
+        # else:
+        #     smoothed_preds[i+ window_size//2] = 'False\n'
     
     front_fill = back_fill = ''
     index = 0
@@ -63,4 +63,4 @@ def smooth_predictions(predictions, video, window_size=10):
 
 
 if __name__ == '__main__':
-    smooth_predictions('temp/female_session1_fps20.txt', 'temp/female_session1_fps20.avi', 5)
+    smooth_predictions('temp/female_session1_fps20.txt', 'temp/female_session1_fps20.avi', 3)
