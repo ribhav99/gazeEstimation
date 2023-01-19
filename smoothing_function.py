@@ -5,6 +5,9 @@ from tqdm import tqdm
 def smooth_predictions(predictions, video, window_size=10):
     with open(predictions, 'r') as f:
         preds = f.readlines()
+    
+    preds_info = [i.split(' ') for i in preds]
+    preds = [i[0] for i in preds_info]
     cap = cv2.VideoCapture(video)
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -48,7 +51,7 @@ def smooth_predictions(predictions, video, window_size=10):
             break
 
         cv2.putText(frame, f"Smoothed Gaze: {smoothed_preds[count].strip()}", (150, 200), cv2.FONT_HERSHEY_PLAIN, 3, 255, 3)
-        file.write(smoothed_preds[count])
+        file.write(' '.join(preds_info[count]))
         count += 1
         out.write(frame)
         pbar.update(1)
