@@ -38,12 +38,9 @@ def smooth_predictions(predictions, video, window_size=10):
     for i in range(len(smoothed_preds) - 1, index, -1):
         smoothed_preds[i] = back_fill
 
-    # print(len(smoothed_preds), int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
-    # assert int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) == len(smoothed_preds)
-    # assert len(smoothed_preds) == len(preds)
-
     count = 0
     pbar = tqdm(total=total_frames)
+    file = open(f'{predictions[:-4]}_smoothed.txt', 'w')
     while True:
         ret, frame = cap.read()
         if not ret or count >= len(smoothed_preds):
@@ -51,6 +48,7 @@ def smooth_predictions(predictions, video, window_size=10):
             break
 
         cv2.putText(frame, f"Smoothed Gaze: {smoothed_preds[count].strip()}", (150, 200), cv2.FONT_HERSHEY_PLAIN, 3, 255, 3)
+        file.write(smoothed_preds[count])
         count += 1
         out.write(frame)
         pbar.update(1)
@@ -58,6 +56,7 @@ def smooth_predictions(predictions, video, window_size=10):
     cap.release()
     out.release()
     pbar.close()
+    file.close()
     
     cv2.destroyAllWindows()
 
