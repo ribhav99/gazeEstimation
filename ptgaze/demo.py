@@ -309,9 +309,9 @@ class Demo:
                 no_gaze_distance = min(distance, no_gaze_distance)
             
             if gaze_distance <= no_gaze_distance:
-                pred_file.write('True\n')
+                pred_file.write(f'True {pt0} {pt1}\n')
                 pred_file.close()
                 return True
-            pred_file.write('False\n')
+            pred_file.write(f'False {pt0} {pt1}\n')
             pred_file.close()
             return False
