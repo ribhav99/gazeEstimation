@@ -4,6 +4,8 @@ import pathlib
 import warnings
 import itertools
 import sympy
+import matplotlib.pyplot as plt
+import numpy as np
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -161,18 +163,27 @@ def main():
 
 def _compute_intersections(points):
     if points:
-        cords = [(int(points[i]), int(points[i+1]), int(points[i+2])) for i in range(0, len(points) - 2, 3)]
+        cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
-        combs_of_lines = list(itertools.combinations(lines, 2))
+        # combs_of_lines = list(itertools.combinations(lines, 2))
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
         intersections = []
-        for i in combs_of_lines:
-            line1 = sympy.Line3D(sympy.Point3D(i[0][0][0], i[0][0][1], i[0][0][2]),
-                sympy.Point3D(i[0][1][0], i[0][1][1], i[0][1][2]))
-            line2 = sympy.Line3D(sympy.Point3D(i[1][0][0], i[1][0][1], i[1][0][2]),
-                sympy.Point3D(i[1][1][0], i[1][1][1], i[1][1][2]))
-            intersec = line1.intersection(line2)
-            print(f'INTERSECTION', line1, line2)
-            intersections.append((intersec.x, intersec.y, intersec.z))
+        for i in lines:
+            line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
+                sympy.Point3D(i[1][0], i[1][1], i[1][2]))
+            x = np.linspace(-2.0, 2.0, 100)
+            y = np.linspace(-2.0, 2.0, 100)
+            z = str(line.equation()[0])
+            index1 = z.index('*x')
+            index2 = z.index('*y')
+            x_coeff = float(z[:index1])
+            y_coeff = float(z[index1+5:index2])
+            k_coeff = float(z[index2+5:])
+            z = x_coeff*x + y_coeff*y + k_coeff # The signs are not always +, so correct this
+            ax.plot(x, y, z)
+            intersections.append(line)
+        plt.show()
         return intersections
     return False
 

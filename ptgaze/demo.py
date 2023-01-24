@@ -3,6 +3,7 @@ import logging
 import pathlib
 from typing import Optional
 import math
+import os
 
 import cv2
 import numpy as np
@@ -249,10 +250,12 @@ class Demo:
 
     def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=10):
         '''
-        gaze_array is a list of 2d points where gaze was being made. 
+        gaze_array is a list of 3d points where gaze was being made. 
         Using that information, predict whether gaze is being made when
         gaze points are pt0 and pt1
         '''
+        pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
+
         # get equation of line pt0, pt1
         l = pt1[0] - pt0[0]
         m = pt1[1] - pt0[1]
@@ -296,8 +299,11 @@ class Demo:
                 z_flag = True
 
             if x_flag and y_flag and z_flag:
+                pred_file.write(f'True {pt0} {pt1}\n')
+                pred_file.close()
                 return True
 
             
-
+        pred_file.write(f'False {pt0} {pt1}\n')
+        pred_file.close()
         return False

@@ -63,7 +63,8 @@ class Visualizer:
         pt0 = self._convert_pt(points2d[0])
         pt1 = self._convert_pt(points2d[1])
         cv2.line(self.image, pt0, pt1, color, lw, cv2.LINE_AA)
-        cv2.putText(self.image, f"pt0: {point0}, pt1: {point1}", (10, 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+        cv2.putText(self.image, f"pt0: {point0}", (10, 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+        cv2.putText(self.image, f"pt1: {point1}", (10, 50), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
         return point0, point1
 
     def draw_model_axes(self, face: Face, length: float, lw: int = 2) -> None:
