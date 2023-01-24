@@ -161,6 +161,9 @@ def main():
     demo = Demo(config)
     demo.run()
 
+# TODO: Iterate over the z values in that interval and see where the spread of intersections
+# of points with that z plane is minimum. Use that z value.
+# note: First check if a line lies on the plane. If it does, just disregard that line
 def _compute_intersections(points):
     if points:
         cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
@@ -168,13 +171,17 @@ def _compute_intersections(points):
         # combs_of_lines = list(itertools.combinations(lines, 2))
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
+        x = np.linspace(-2.0, 2.0, 100)
+        y = np.linspace(-2.0, 2.0, 100)
+        a, b = np.meshgrid(x, y)
+        eq = 0*a + 0*b - 21554481427194 # 0*a + b + 1
+        ax.plot_surface(a, b, eq)
         intersections = []
         for i in lines:
             line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
                 sympy.Point3D(i[1][0], i[1][1], i[1][2]))
-            x = np.linspace(-2.0, 2.0, 100)
-            y = np.linspace(-2.0, 2.0, 100)
             z = str(line.equation()[0])
+            # print(f'Equation = {z}')
             index1 = z.index('*x')
             index2 = z.index('*y')
             x_coeff = float(z[:index1])
@@ -184,7 +191,9 @@ def _compute_intersections(points):
             ax.plot(x, y, z)
             intersections.append(line)
         plt.show()
-        return intersections
+        return [] # Make it return intersections
     return False
 
+def find_correct_plane():
+    pass
  
