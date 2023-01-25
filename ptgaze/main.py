@@ -6,6 +6,9 @@ import itertools
 import sympy
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import trange
+import multiprocessing
+from pqdm.processes import pqdm
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -164,7 +167,7 @@ def main():
 # TODO: Iterate over the z values in that interval and see where the spread of intersections
 # of points with that z plane is minimum. Use that z value.
 # note: First check if a line lies on the plane. If it does, just disregard that line
-def _compute_intersections(points):
+def _compute_intersections(points, plot_points=False):
     if points:
         cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
@@ -173,27 +176,59 @@ def _compute_intersections(points):
         ax = fig.add_subplot(111, projection='3d')
         x = np.linspace(-2.0, 2.0, 100)
         y = np.linspace(-2.0, 2.0, 100)
-        a, b = np.meshgrid(x, y)
-        eq = 0*a + 0*b - 21554481427194 # 0*a + b + 1
-        ax.plot_surface(a, b, eq)
         intersections = []
         for i in lines:
             line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
                 sympy.Point3D(i[1][0], i[1][1], i[1][2]))
-            z = str(line.equation()[0])
-            # print(f'Equation = {z}')
-            index1 = z.index('*x')
-            index2 = z.index('*y')
-            x_coeff = float(z[:index1])
-            y_coeff = float(z[index1+5:index2])
-            k_coeff = float(z[index2+5:])
-            z = x_coeff*x + y_coeff*y + k_coeff # The signs are not always +, so correct this
-            ax.plot(x, y, z)
             intersections.append(line)
-        plt.show()
+            if plot_points:
+                z = str(line.equation()[0])
+                # print(f'Equation = {z}')
+                index1 = z.index('*x')
+                index2 = z.index('*y')
+                y_operator = z[index1+3]
+                k_operator = z[index2+3]
+                x_coeff = float(z[:index1])
+                y_coeff = float(z[index1+5:index2])
+                y_coeff = y_coeff if y_operator == '+' else -1 * y_coeff
+                k_coeff = float(z[index2+5:])
+                k_coeff = k_coeff if k_operator == '+' else -1 * k_coeff
+                
+                # The signs are not always +, accounted for this with 
+                # y_operator and k_operator
+                z = x_coeff*x + y_coeff*y + k_coeff  
+                ax.plot(x, y, z)
+            
+        if plot_points:
+            a, b = np.meshgrid(x, y)
+            eq = 0*a + 0*b - 21554481427194
+            ax.plot_surface(a, b, eq)
+            plane = sympy.Plane((1, 1, -21554481427194), 
+                                (4, 5, -21554481427194), 
+                                (4, 6, -21554481427194))
+            print(plane.equation())
+            plt.show()
+        find_correct_plane(intersections)
         return [] # Make it return intersections
     return False
 
-def find_correct_plane():
-    pass
- 
+def find_correct_plane(lines, z_range=(-111320375985601, 188991057267854)):
+    x = np.linspace(-2.0, 2.0, 100)
+    y = np.linspace(-2.0, 2.0, 100)
+    a, b = np.meshgrid(x, y)
+    print('Calculating best plane of intersection')
+    for i in range(*z_range, 100000000000):
+        plane = sympy.Plane((1, 1, i), 
+                            (4, 5, i), 
+                            (4, 6, i))
+        intersections = []
+        args = [(plane, l) for l in lines]
+        result = pqdm(args, plane_lines_intersections, n_jobs=multiprocessing.cpu_count(), argument_type='args')
+        print(result)
+        # for line in lines:
+        #     intersec = intersections.append(plane.intersection(line))
+        #     if intersec:
+        #         print(i, intersec)
+
+def plane_lines_intersections(plane, line):
+    return plane.intersection(line)
