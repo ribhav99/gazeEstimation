@@ -167,7 +167,7 @@ def main():
 # TODO: Iterate over the z values in that interval and see where the spread of intersections
 # of points with that z plane is minimum. Use that z value.
 # note: First check if a line lies on the plane. If it does, just disregard that line
-def _compute_intersections(points, plot_points=False):
+def _compute_intersections(points, plot_points=True):
     if points:
         cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
@@ -202,7 +202,7 @@ def _compute_intersections(points, plot_points=False):
         if plot_points:
             a, b = np.meshgrid(x, y)
             eq = 0*a + 0*b - 21554481427194
-            ax.plot_surface(a, b, eq)
+            # ax.plot_surface(a, b, eq)
             plane = sympy.Plane((1, 1, -21554481427194), 
                                 (4, 5, -21554481427194), 
                                 (4, 6, -21554481427194))
