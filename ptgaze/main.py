@@ -167,7 +167,7 @@ def main():
 # TODO: Iterate over the z values in that interval and see where the spread of intersections
 # of points with that z plane is minimum. Use that z value.
 # note: First check if a line lies on the plane. If it does, just disregard that line
-def _compute_intersections(points, plot_points=True):
+def _compute_intersections(points, plot_points=False):
     if points:
         cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
@@ -180,11 +180,9 @@ def _compute_intersections(points, plot_points=True):
         for i in lines:
             line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
                 sympy.Point3D(i[1][0], i[1][1], i[1][2]))
-            # print(line)
             lines_3d.append(line)
             if plot_points:
                 z = str(line.equation()[0])
-                # print(f'Equation = {z}')
                 index1 = z.index('*x')
                 index2 = z.index('*y')
                 y_operator = z[index1+3]
@@ -207,7 +205,6 @@ def _compute_intersections(points, plot_points=True):
             plane = sympy.Plane((1, 1, -21554481427194), 
                                 (4, 5, -21554481427194), 
                                 (4, 6, -21554481427194))
-            # print(plane.equation())
             plt.show()
         find_correct_plane(lines_3d)
         return [] # Make it return intersections
@@ -219,6 +216,7 @@ def find_correct_plane(lines, z_range=(-111320375985601, 188991057267854)):
     a, b = np.meshgrid(x, y)
     print('Calculating intersections')
     args = [{'z': z, 'lines': lines} for z in range(*z_range, 100000000000)]
+    # args = [{'z': z, 'lines': lines} for z in range(0, 3)]
     
     # The result is a 3d Array:
     # 2: 3D point of intersection between line and plane
@@ -226,7 +224,6 @@ def find_correct_plane(lines, z_range=(-111320375985601, 188991057267854)):
     # 0: array of '1', each element corresponds to a different plane
     result = pqdm(args, plane_lines_intersections, n_jobs=multiprocessing.cpu_count(), 
                   argument_type='kwargs')
-    
     print('Calculating best plane of intersection')
     args = [i for i in result]
     spread = pqdm(args, find_spread, n_jobs=multiprocessing.cpu_count())
@@ -249,6 +246,7 @@ def find_spread(intersections):
     mp = [0,0,0]
     size = len(intersections)
     for i in intersections:
+        i = i[0]
         cords = i.coordinates
         mp[0] += cords[0]
         mp[1] += cords[1]
@@ -259,5 +257,6 @@ def find_spread(intersections):
     mp = sympy.Point3D(*mp)
     distance = 0
     for i in intersections:
-        distance += i.distance(mp)
+        i = i[0]
+        distance += float(i.distance(mp))
     return distance
