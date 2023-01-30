@@ -120,3 +120,8 @@ python3 ptgaze/__main__.py --mode eth-xgaze --video assets/inputs/gazeEstimation
 
 
 Following this format, the consecutive pairs of integers from the gaze_array parameter form points in 2d (eg 6 integers = 3 points) and consecutive pairs of points form lines (6 points = 3 lines). We then compute the intersections of all combinations of lines (line 1 and 2, 2 and 3, 1 and 3) and then check, for every frame in th video, whether any of the intersection points lie on the gaze line from that frame (with some margin for error). 
+
+
+For 3d:
+
+python3 ptgaze/__main__.py --mode eth-xgaze --video assets/inputs/gazeEstimation1.mov -o assets/results --gaze_array -0.00787756  0.01413496  0.52851015 -0.00902696  0.02065379  0.47895025 0.01269892 0.04119225 0.4845584 0.0055549  0.0487605  0.43565355 0.0431923  0.00762602 0.53411021 0.0257041  0.01797265 0.48842531 -0.07348256  0.01006418  0.52605935 -0.05723557  0.02269106  0.48048966 -0.12192375  0.02636199  0.51752744 -0.09537475  0.02777422  0.47518176 0.04055233 0.0390509  0.4800675 0.02419336 0.04866643 0.43380816

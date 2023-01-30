@@ -176,11 +176,12 @@ def _compute_intersections(points, plot_points=True):
         ax = fig.add_subplot(111, projection='3d')
         x = np.linspace(-2.0, 2.0, 100)
         y = np.linspace(-2.0, 2.0, 100)
-        intersections = []
+        lines_3d = []
         for i in lines:
             line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
                 sympy.Point3D(i[1][0], i[1][1], i[1][2]))
-            intersections.append(line)
+            # print(line)
+            lines_3d.append(line)
             if plot_points:
                 z = str(line.equation()[0])
                 # print(f'Equation = {z}')
@@ -206,9 +207,9 @@ def _compute_intersections(points, plot_points=True):
             plane = sympy.Plane((1, 1, -21554481427194), 
                                 (4, 5, -21554481427194), 
                                 (4, 6, -21554481427194))
-            print(plane.equation())
+            # print(plane.equation())
             plt.show()
-        find_correct_plane(intersections)
+        find_correct_plane(lines_3d)
         return [] # Make it return intersections
     return False
 
@@ -217,18 +218,19 @@ def find_correct_plane(lines, z_range=(-111320375985601, 188991057267854)):
     y = np.linspace(-2.0, 2.0, 100)
     a, b = np.meshgrid(x, y)
     print('Calculating best plane of intersection')
-    for i in range(*z_range, 100000000000):
-        plane = sympy.Plane((1, 1, i), 
-                            (4, 5, i), 
-                            (4, 6, i))
-        intersections = []
-        args = [(plane, l) for l in lines]
-        result = pqdm(args, plane_lines_intersections, n_jobs=multiprocessing.cpu_count(), argument_type='args')
-        print(result)
-        # for line in lines:
-        #     intersec = intersections.append(plane.intersection(line))
-        #     if intersec:
-        #         print(i, intersec)
+    args = [{'z': z, 'lines': lines} for z in range(*z_range, 100000000000)]
+   
+    result = pqdm(args, plane_lines_intersections, n_jobs=multiprocessing.cpu_count(), argument_type='kwargs')
+    print(f'RESULT: {result}')
 
-def plane_lines_intersections(plane, line):
-    return plane.intersection(line)
+def plane_lines_intersections(z, lines):
+    intersections = []
+    plane = sympy.Plane((1, 1, z), 
+                        (4, 5, z), 
+                        (4, 6, z))
+    for line in lines:
+        intersec = plane.intersection(line)
+        intersections.append(intersec)
+        if intersec:
+            print(line, intersec)
+    return intersections
