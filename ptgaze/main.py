@@ -127,7 +127,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
             config.demo.output_dir = 'outputs'
     config.log = True if args.log else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
-    config.intersections = _compute_intersections(config.gaze_array)
+    config.zplane_and_spread = _get_zplane_and_spread(config.gaze_array)
     return config
 
 
@@ -164,10 +164,8 @@ def main():
     demo = Demo(config)
     demo.run()
 
-# TODO: Iterate over the z values in that interval and see where the spread of intersections
-# of points with that z plane is minimum. Use that z value.
-# note: First check if a line lies on the plane. If it does, just disregard that line
-def _compute_intersections(points, plot_points=False):
+
+def _get_zplane_and_spread(points, plot_points=False):
     if points:
         cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
@@ -182,40 +180,43 @@ def _compute_intersections(points, plot_points=False):
                 sympy.Point3D(i[1][0], i[1][1], i[1][2]))
             lines_3d.append(line)
             if plot_points:
-                z = str(line.equation()[0])
-                index1 = z.index('*x')
-                index2 = z.index('*y')
-                y_operator = z[index1+3]
-                k_operator = z[index2+3]
-                x_coeff = float(z[:index1])
-                y_coeff = float(z[index1+5:index2])
-                y_coeff = y_coeff if y_operator == '+' else -1 * y_coeff
-                k_coeff = float(z[index2+5:])
-                k_coeff = k_coeff if k_operator == '+' else -1 * k_coeff
+                # z = str(line.equation()[0])
+                # index1 = z.index('*x')
+                # index2 = z.index('*y')
+                # y_operator = z[index1+3]
+                # k_operator = z[index2+3]
+                # x_coeff = float(z[:index1])
+                # y_coeff = float(z[index1+5:index2])
+                # y_coeff = y_coeff if y_operator == '+' else -1 * y_coeff
+                # k_coeff = float(z[index2+5:])
+                # k_coeff = k_coeff if k_operator == '+' else -1 * k_coeff
                 
                 # The signs are not always +, accounted for this with 
                 # y_operator and k_operator
-                z = x_coeff*x + y_coeff*y + k_coeff  
+                # z = x_coeff*x + y_coeff*y + k_coeff  
+                
+                x, y, z = [i[0][0], i[1][0]], [i[0][1], i[1][1]], [i[0][2], i[1][2]]
                 ax.plot(x, y, z)
             
         if plot_points:
             a, b = np.meshgrid(x, y)
-            eq = 0*a + 0*b - 21554481427194
-            # ax.plot_surface(a, b, eq)
+            eq = 0*a + 0*b - 0
+            ax.plot_surface(a, b, eq)
             plane = sympy.Plane((1, 1, -21554481427194), 
                                 (4, 5, -21554481427194), 
                                 (4, 6, -21554481427194))
             plt.show()
-        find_correct_plane(lines_3d)
-        return [] # Make it return intersections
+        z_value, avg_smallest_spread = find_correct_plane(lines_3d)
+        return (z_value, avg_smallest_spread)
     return False
 
-def find_correct_plane(lines, z_range=(-111320375985601, 188991057267854)):
+
+def find_correct_plane(lines, z_range=(-101, 101)):
     x = np.linspace(-2.0, 2.0, 100)
     y = np.linspace(-2.0, 2.0, 100)
     a, b = np.meshgrid(x, y)
     print('Calculating intersections')
-    args = [{'z': z, 'lines': lines} for z in range(*z_range, 100000000000)]
+    args = [{'z': z, 'lines': lines} for z in range(*z_range)]
     # args = [{'z': z, 'lines': lines} for z in range(0, 3)]
     
     # The result is a 3d Array:
@@ -227,7 +228,11 @@ def find_correct_plane(lines, z_range=(-111320375985601, 188991057267854)):
     print('Calculating best plane of intersection')
     args = [i for i in result]
     spread = pqdm(args, find_spread, n_jobs=multiprocessing.cpu_count())
-    print(spread)
+    smallest_spread = min(spread)
+    index = spread.index(smallest_spread)
+    z_value = range(*z_range)[index]
+    avg_smallest_spread = smallest_spread / len(lines)
+    return z_value, avg_smallest_spread
 
 
 def plane_lines_intersections(z, lines):
