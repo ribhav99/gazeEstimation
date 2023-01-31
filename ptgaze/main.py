@@ -237,11 +237,14 @@ def _get_zplane_and_spread(points, plot_points=False):
             a, b = np.meshgrid(x, y)
             eq = 0*a + 0*b - 0
             ax.plot_surface(a, b, eq)
-            plane = sympy.Plane((1, 1, -21554481427194), 
-                                (4, 5, -21554481427194), 
-                                (4, 6, -21554481427194))
+            plane = sympy.Plane((1, 1, 0), 
+                                (4, 5, 0), 
+                                (4, 6, 0))
             plt.show()
-        z_value, avg_smallest_spread, mp = find_correct_plane(lines_3d)
+        z_value, avg_smallest_spread, mp, intersections = find_correct_plane(lines_3d)
+        print('\n\n\n\n\n\n')
+        print(intersections)
+        print('\n\n\n\n\n\n')
         return [z_value, avg_smallest_spread, mp.coordinates]
     return False
 
@@ -258,11 +261,12 @@ def find_correct_plane(lines, z_range=(-101, 101)):
     result = pqdm(args, plane_lines_intersections, n_jobs=multiprocessing.cpu_count(), 
                   argument_type='kwargs')
     print('Calculating best plane of intersection')
-    args = [i for i in result]
-    result1 = np.array(pqdm(args, find_spread, n_jobs=1))
+    intersections = [i for i in result]
+    result1 = np.array(pqdm(intersections, find_spread, n_jobs=1))
     spread, mp = result1[:, 0].tolist(), result1[:, 1].tolist()
     smallest_spread = min(spread)
     index = spread.index(smallest_spread)
     z_value = range(*z_range)[index]
     avg_smallest_spread = smallest_spread / len(lines)
-    return z_value, avg_smallest_spread, mp[index]
+    tightest_intersections = intersections[index]
+    return z_value, avg_smallest_spread, mp[index], tightest_intersections
