@@ -8,6 +8,7 @@ import os
 import cv2
 import numpy as np
 from omegaconf import DictConfig
+import sympy
 
 from common import Face, FacePartsName, Visualizer
 from gaze_estimator import GazeEstimator
@@ -248,7 +249,7 @@ class Demo:
             self.visualizer.write_prediction(pred)
         return pt0, pt1
 
-    def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=10):
+    def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=0.1):
         '''
         gaze_array is a list of 3d points where gaze was being made. 
         Using that information, predict whether gaze is being made when
@@ -256,53 +257,18 @@ class Demo:
         '''
         pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
 
-        # get equation of line pt0, pt1
-        l = pt1[0] - pt0[0]
-        m = pt1[1] - pt0[1]
-        n = pt1[2] - pt0[2]
-        x_flag = False
-        y_flag = False
-        z_flag = False
+        z_value, avg_smallest_spread, mp = self.config.zplane_and_spread
+        gaze_line = sympy.Line3D(sympy.Point3D(*pt0), sympy.Point3D(*pt1))
+        plane = sympy.Plane((1, 1, z_value), 
+                            (4, 5, z_value), 
+                            (4, 6, z_value)) 
+        intersec = plane.intersection(gaze_line)
+        distance = float(intersec.distance(mp))
 
-        for point in self.config.intersections:
-            # check if point (with some error margin) lies on line pt0, pt1
-            # if it does then return True
-
-            # Check x
-            if m != 0:
-                x = (((point[1] - pt1[1])/m) * l) + pt1[0]
-            else:
-                x = (np.inf * l)
-                x = 0 if math.isnan(x) else x
-                x += pt1[0]
-            if x - error_factor <= point[0] <= x + error_factor:
-                x_flag = True
-            
-            # Check y
-            if n != 0:
-                y = (((point[2] - pt1[2])/n) * m) + pt1[1]
-            else:
-                y = (np.inf * m)
-                y = 0 if math.isnan(x) else y
-                y += pt1[1]
-            if y - error_factor <= point[1] <= y + error_factor:
-                y_flag = True
-            
-            # Check z
-            if l != 0:
-                z = (((point[0] - pt1[0])/l) * n) + pt1[2]
-            else:
-                z = (np.inf * n)
-                z = 0 if math.isnan(x) else z
-                z += pt1[2]
-            if z - error_factor <= point[2] <= z + error_factor:
-                z_flag = True
-
-            if x_flag and y_flag and z_flag:
-                pred_file.write(f'True {pt0} {pt1}\n')
-                pred_file.close()
-                return True
-
+        if distance <= avg_smallest_spread * (1 + error_factor):
+            pred_file.write(f'True {pt0} {pt1}\n')
+            pred_file.close()
+            return True
             
         pred_file.write(f'False {pt0} {pt1}\n')
         pred_file.close()
