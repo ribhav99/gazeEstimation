@@ -127,7 +127,9 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
             config.demo.output_dir = 'outputs'
     config.log = True if args.log else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
-    config.zplane_and_spread = _get_zplane_and_spread(config.gaze_array)
+    # config.zplane_and_spread = _get_zplane_and_spread(config.gaze_array)
+    config.z_value, config.spread, mp = _get_zplane_and_spread(config.gaze_array)
+    config.mpx, config.mpy, config.mpz = float(mp[0]), float(mp[1]), float(mp[2])
     return config
 
 
@@ -207,7 +209,7 @@ def _get_zplane_and_spread(points, plot_points=False):
                                 (4, 6, -21554481427194))
             plt.show()
         z_value, avg_smallest_spread, mp = find_correct_plane(lines_3d)
-        return (z_value, avg_smallest_spread, mp)
+        return [z_value, avg_smallest_spread, mp.coordinates]
     return False
 
 
@@ -224,12 +226,13 @@ def find_correct_plane(lines, z_range=(-101, 101)):
                   argument_type='kwargs')
     print('Calculating best plane of intersection')
     args = [i for i in result]
-    spread, mp = pqdm(args, find_spread, n_jobs=multiprocessing.cpu_count())
+    result1 = np.array(pqdm(args, find_spread, n_jobs=multiprocessing.cpu_count()))
+    spread, mp = result1[:, 0].tolist(), result1[:, 1].tolist()
     smallest_spread = min(spread)
     index = spread.index(smallest_spread)
     z_value = range(*z_range)[index]
     avg_smallest_spread = smallest_spread / len(lines)
-    return z_value, avg_smallest_spread, mp
+    return z_value, avg_smallest_spread, mp[index]
 
 
 def plane_lines_intersections(z, lines):

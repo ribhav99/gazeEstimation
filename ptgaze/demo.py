@@ -257,15 +257,16 @@ class Demo:
         '''
         pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
 
-        z_value, avg_smallest_spread, mp = self.config.zplane_and_spread
+        mp = [self.config.mpx, self.config.mpy, self.config.mpz]
+        mp = sympy.Point3D(*mp)
         gaze_line = sympy.Line3D(sympy.Point3D(*pt0), sympy.Point3D(*pt1))
-        plane = sympy.Plane((1, 1, z_value), 
-                            (4, 5, z_value), 
-                            (4, 6, z_value)) 
-        intersec = plane.intersection(gaze_line)
+        plane = sympy.Plane((1, 1, self.config.z_value), 
+                            (4, 5, self.config.z_value), 
+                            (4, 6, self.config.z_value)) 
+        intersec = sympy.Point3D(*plane.intersection(gaze_line))
         distance = float(intersec.distance(mp))
 
-        if distance <= avg_smallest_spread * (1 + error_factor):
+        if distance <= self.config.spread * (1 + error_factor):
             pred_file.write(f'True {pt0} {pt1}\n')
             pred_file.close()
             return True
