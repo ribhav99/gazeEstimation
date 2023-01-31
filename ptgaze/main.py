@@ -255,7 +255,7 @@ def find_correct_plane(lines, z_range=(-101, 101)):
     # 2: 3D point of intersection between line and plane
     # 1: array of intersections of 3D points and particular plane
     # 0: array of '1', each element corresponds to a different plane
-    result = pqdm(args, plane_lines_intersections, n_jobs=1, 
+    result = pqdm(args, plane_lines_intersections, n_jobs=multiprocessing.cpu_count(), 
                   argument_type='kwargs')
     print('Calculating best plane of intersection')
     args = [i for i in result]
