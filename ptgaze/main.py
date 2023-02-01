@@ -81,7 +81,9 @@ def parse_args() -> argparse.Namespace:
         'to the output directory.')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--log', action='store_true', default=False)
+    parser.add_argument('--no_gaze_array', nargs='+', default=False)
     parser.add_argument('--gaze_array', nargs='+', default=False)
+    parser.add_argument('--fps', default=30)
     return parser.parse_args()
 
 
@@ -126,10 +128,12 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
         if not config.demo.output_dir:
             config.demo.output_dir = 'outputs'
     config.log = True if args.log else False
+    config.no_gaze_array = args.no_gaze_array if args.no_gaze_array else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
-    # config.zplane_and_spread = _get_zplane_and_spread(config.gaze_array)
-    config.z_value, config.spread, mp = _get_zplane_and_spread(config.gaze_array)
-    config.mpx, config.mpy, config.mpz = float(mp[0]), float(mp[1]), float(mp[2])
+    config.gaze_zvalue, config.gaze_spread, _, config.gaze_intersections = _get_zplane_and_spread(config.gaze_array)
+    # config.mpx, config.mpy, config.mpz = float(mp[0]), float(mp[1]), float(mp[2])
+    config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
+    config.fps = args.fps
     return config
 
 
@@ -242,11 +246,9 @@ def _get_zplane_and_spread(points, plot_points=False):
                                 (4, 6, 0))
             plt.show()
         z_value, avg_smallest_spread, mp, intersections = find_correct_plane(lines_3d)
-        print('\n\n\n\n\n\n')
-        print(intersections)
-        print('\n\n\n\n\n\n')
-        return [z_value, avg_smallest_spread, mp.coordinates]
-    return False
+        intersections = [list((lambda x: [float(i) for i in x])(i[0].coordinates)) for i in intersections]
+        return [z_value, avg_smallest_spread, mp.coordinates, intersections]
+    return False, False, False, False
 
 
 def find_correct_plane(lines, z_range=(-101, 101)):

@@ -151,7 +151,7 @@ class Demo:
         else:
             raise ValueError
         output_path = self.output_dir / output_name
-        writer = cv2.VideoWriter(output_path.as_posix(), fourcc, 30,
+        writer = cv2.VideoWriter(output_path.as_posix(), fourcc, int(self.config.fps),
                                  (self.gaze_estimator.camera.width,
                                   self.gaze_estimator.camera.height))
         if writer is None:
@@ -249,28 +249,53 @@ class Demo:
             self.visualizer.write_prediction(pred)
         return pt0, pt1
 
-    def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=1):
+    def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=0.05):
         '''
         gaze_array is a list of 3d points where gaze was being made. 
         Using that information, predict whether gaze is being made when
         gaze points are pt0 and pt1
         '''
         pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
-
-        mp = [self.config.mpx, self.config.mpy, self.config.mpz]
-        mp = sympy.Point3D(*mp)
         gaze_line = sympy.Line3D(sympy.Point3D(*pt0), sympy.Point3D(*pt1))
-        plane = sympy.Plane((1, 1, self.config.z_value), 
-                            (4, 5, self.config.z_value), 
-                            (4, 6, self.config.z_value)) 
-        intersec = sympy.Point3D(*plane.intersection(gaze_line))
-        distance = float(intersec.distance(mp))
+        if not self.config.no_gaze_array:
+            # mp = [self.config.mpx, self.config.mpy, self.config.mpz]
+            # mp = sympy.Point3D(*mp)
+            plane = sympy.Plane((1, 1, self.config.gaze_zvalue), 
+                                (4, 5, self.config.gaze_zvalue), 
+                                (4, 6, self.config.gaze_zvalue)) 
+            intersec = sympy.Point3D(*plane.intersection(gaze_line))
+            # distance = float(intersec.distance(mp))
+            for i in self.config.intersections:
+                distance = float(intersec.distance(i))
+                if distance <= error_factor:
+                    pred_file.write(f'True {pt0} {pt1}\n')
+                    pred_file.close()
+                    return True
 
-        if distance <= self.config.spread * (1 + error_factor):
-            pred_file.write(f'True {pt0} {pt1}\n')
-            pred_file.close()
-            return True
+            # if distance <= self.config.spread * (1 + error_factor):
+            #     pred_file.write(f'True {pt0} {pt1}\n')
+            #     pred_file.close()
+            #     return True
+
+        else:
+            z_value = self.config.gaze_zvalue + self.config.no_gaze_zvalue
+            z_value /= 2
+            plane = sympy.Plane((1, 1, z_value), 
+                                (4, 5, z_value), 
+                                (4, 6, z_value)) 
+            intersec = sympy.Point3D(*plane.intersection(gaze_line))
+            distance = float('inf')
+            for i in self.config.no_gaze_intersections:
+                distance = min(float(intersec.distance(i)), distance)
             
+            for i in self.config.gaze_intersections:
+                new_distance = float(intersec.distance(i))
+                if new_distance <= distance:
+                    pred_file.write(f'True {pt0} {pt1}\n')
+                    pred_file.close()
+                    return True
+
+
         pred_file.write(f'False {pt0} {pt1}\n')
         pred_file.close()
         return False
