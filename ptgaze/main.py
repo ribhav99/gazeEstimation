@@ -131,9 +131,13 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.no_gaze_array = args.no_gaze_array if args.no_gaze_array else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
     config.gaze_zvalue, config.gaze_spread, _, config.gaze_intersections = _get_zplane_and_spread(config.gaze_array)
-    # config.mpx, config.mpy, config.mpz = float(mp[0]), float(mp[1]), float(mp[2])
     config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
     config.fps = args.fps
+    if not args.no_screen and args.gaze_array:
+        if args.no_gaze_array:
+            graph_lines(args.gaze_array + args.no_gaze_array)
+        else:
+            graph_lines(args.gaze_array)
     return config
 
 
@@ -154,7 +158,7 @@ def main():
         generate_dummy_camera_params(config)
 
     OmegaConf.set_readonly(config, True)
-    logger.info(OmegaConf.to_yaml(config))
+    # logger.info(OmegaConf.to_yaml(config))
 
     if config.face_detector.mode == 'dlib':
         download_dlib_pretrained_model()
@@ -203,48 +207,17 @@ def find_spread(intersections):
     return distance, mp
 
 
-def _get_zplane_and_spread(points, plot_points=False):
+def _get_zplane_and_spread(points):
     if points:
         cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
-        # combs_of_lines = list(itertools.combinations(lines, 2))
-        if plot_points:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            x = np.linspace(-2.0, 2.0, 100)
-            y = np.linspace(-2.0, 2.0, 100)
+        
         lines_3d = []
         for i in lines:
             line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
                 sympy.Point3D(i[1][0], i[1][1], i[1][2]))
             lines_3d.append(line)
-            if plot_points:
-                # z = str(line.equation()[0])
-                # index1 = z.index('*x')
-                # index2 = z.index('*y')
-                # y_operator = z[index1+3]
-                # k_operator = z[index2+3]
-                # x_coeff = float(z[:index1])
-                # y_coeff = float(z[index1+5:index2])
-                # y_coeff = y_coeff if y_operator == '+' else -1 * y_coeff
-                # k_coeff = float(z[index2+5:])
-                # k_coeff = k_coeff if k_operator == '+' else -1 * k_coeff
-                
-                # The signs are not always +, accounted for this with 
-                # y_operator and k_operator
-                # z = x_coeff*x + y_coeff*y + k_coeff  
-                
-                x, y, z = [i[0][0], i[1][0]], [i[0][1], i[1][1]], [i[0][2], i[1][2]]
-                ax.plot(x, y, z)
-            
-        if plot_points:
-            a, b = np.meshgrid(x, y)
-            eq = 0*a + 0*b - 0
-            ax.plot_surface(a, b, eq)
-            plane = sympy.Plane((1, 1, 0), 
-                                (4, 5, 0), 
-                                (4, 6, 0))
-            plt.show()
+    
         z_value, avg_smallest_spread, mp, intersections = find_correct_plane(lines_3d)
         intersections = [list((lambda x: [float(i) for i in x])(i[0].coordinates)) for i in intersections]
         return [z_value, avg_smallest_spread, mp.coordinates, intersections]
@@ -272,3 +245,42 @@ def find_correct_plane(lines, z_range=(-101, 101)):
     avg_smallest_spread = smallest_spread / len(lines)
     tightest_intersections = intersections[index]
     return z_value, avg_smallest_spread, mp[index], tightest_intersections
+
+
+def graph_lines(points):
+    cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
+    lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    x = np.linspace(-2.0, 2.0, 100)
+    y = np.linspace(-2.0, 2.0, 100)
+
+    for i in lines:
+        line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
+                sympy.Point3D(i[1][0], i[1][1], i[1][2]))
+        z = str(line.equation()[0])
+        print(z)
+        index1 = z.index('*x')
+        index2 = z.index('*y')
+        y_operator = z[index1+3]
+        k_operator = z[index2+3]
+        x_coeff = float(z[:index1])
+        y_coeff = float(z[index1+5:index2])
+        y_coeff = y_coeff if y_operator == '+' else -1 * y_coeff
+        k_coeff = float(z[index2+5:])
+        k_coeff = k_coeff if k_operator == '+' else -1 * k_coeff
+        
+        # The signs are not always +, accounted for this with 
+        # y_operator and k_operator
+        z = x_coeff*x + y_coeff*y + k_coeff  
+        
+        # x, y, z = [i[0][0], i[1][0]], [i[0][1], i[1][1]], [i[0][2], i[1][2]]
+        ax.plot(x, y, z)
+
+    a, b = np.meshgrid(x, y)
+    eq = 0*a + 0*b - 0
+    ax.plot_surface(a, b, eq)
+    plane = sympy.Plane((1, 1, 0), 
+                        (4, 5, 0), 
+                        (4, 6, 0))
+    plt.show()

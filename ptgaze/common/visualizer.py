@@ -87,4 +87,4 @@ class Visualizer:
             cv2.line(self.image, center, pt, color, lw, cv2.LINE_AA)
     
     def write_prediction(self, prediction):
-        cv2.putText(self.image, f"Gaze: {prediction}", (150, 150), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+        cv2.putText(self.image, f"Gaze: {prediction}", (20, 160), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, 255, 2)

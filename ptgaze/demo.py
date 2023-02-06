@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 from omegaconf import DictConfig
 import sympy
+from tqdm import tqdm
 
 from common import Face, FacePartsName, Visualizer
 from gaze_estimator import GazeEstimator
@@ -68,6 +69,8 @@ class Demo:
             cv2.imwrite(output_path.as_posix(), self.visualizer.image)
 
     def _run_on_video(self) -> None:
+        total = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        pbar = tqdm(total=total)
         while True:
             if self.config.demo.display_on_screen:
                 self._wait_key()
@@ -78,12 +81,14 @@ class Demo:
             if not ok:
                 break
             self._process_image(frame)
+            pbar.update(1)
 
             if self.config.demo.display_on_screen:
                 cv2.imshow('frame', self.visualizer.image)
         self.cap.release()
         if self.writer:
             self.writer.release()
+        pbar.close()
 
     def _process_image(self, image) -> None:
         undistorted = cv2.undistort(
@@ -258,8 +263,7 @@ class Demo:
         pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
         gaze_line = sympy.Line3D(sympy.Point3D(*pt0), sympy.Point3D(*pt1))
         if not self.config.no_gaze_array:
-            # mp = [self.config.mpx, self.config.mpy, self.config.mpz]
-            # mp = sympy.Point3D(*mp)
+
             plane = sympy.Plane((1, 1, self.config.gaze_zvalue), 
                                 (4, 5, self.config.gaze_zvalue), 
                                 (4, 6, self.config.gaze_zvalue)) 
@@ -271,11 +275,6 @@ class Demo:
                     pred_file.write(f'True {pt0} {pt1}\n')
                     pred_file.close()
                     return True
-
-            # if distance <= self.config.spread * (1 + error_factor):
-            #     pred_file.write(f'True {pt0} {pt1}\n')
-            #     pred_file.close()
-            #     return True
 
         else:
             z_value = self.config.gaze_zvalue + self.config.no_gaze_zvalue
