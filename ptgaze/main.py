@@ -84,6 +84,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--no_gaze_array', nargs='+', default=False)
     parser.add_argument('--gaze_array', nargs='+', default=False)
     parser.add_argument('--fps', default=30)
+    parser.add_argument('--no_draw', action='store_false')
     return parser.parse_args()
 
 
@@ -127,6 +128,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
         config.demo.display_on_screen = False
         if not config.demo.output_dir:
             config.demo.output_dir = 'outputs'
+    config.no_draw = args.no_draw
     config.log = True if args.log else False
     config.no_gaze_array = args.no_gaze_array if args.no_gaze_array else False
     config.gaze_array = args.gaze_array if args.gaze_array else False

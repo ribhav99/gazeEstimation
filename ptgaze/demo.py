@@ -231,18 +231,19 @@ class Demo:
 
     def _draw_gaze_vector(self, face: Face) -> None:
         length = self.config.demo.gaze_visualization_length
+        
         if self.config.mode == 'MPIIGaze':
             for key in [FacePartsName.REYE, FacePartsName.LEYE]:
                 eye = getattr(face, key.name.lower())
                 pt0, pt1 = self.visualizer.draw_3d_line(
-                    eye.center, eye.center + length * eye.gaze_vector)
+                    eye.center, eye.center + length * eye.gaze_vector, draw=self.config.no_draw)
                 pitch, yaw = np.rad2deg(eye.vector_to_angle(eye.gaze_vector))
                 if self.config.log:
                     logger.info(
                         f'[{key.name.lower()}] pitch: {pitch:.2f}, yaw: {yaw:.2f}')
         elif self.config.mode in ['MPIIFaceGaze', 'ETH-XGaze']:
             pt0, pt1 = self.visualizer.draw_3d_line(
-                face.center, face.center + length * face.gaze_vector)
+                face.center, face.center + length * face.gaze_vector, draw=self.config.no_draw)
             pitch, yaw = np.rad2deg(face.vector_to_angle(face.gaze_vector))
             if self.config.log:
                 logger.info(f'[face] pitch: {pitch:.2f}, yaw: {yaw:.2f}')

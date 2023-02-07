@@ -55,16 +55,18 @@ class Visualizer:
                      point0: np.ndarray,
                      point1: np.ndarray,
                      color: Tuple[int, int, int] = (255, 255, 0),
-                     lw=1) -> None:
+                     lw=1,
+                     draw: bool = True) -> None:
         assert self.image is not None
         assert point0.shape == point1.shape == (3, )
         points3d = np.vstack([point0, point1])
         points2d = self._camera.project_points(points3d)
         pt0 = self._convert_pt(points2d[0])
         pt1 = self._convert_pt(points2d[1])
-        cv2.line(self.image, pt0, pt1, color, lw, cv2.LINE_AA)
-        cv2.putText(self.image, f"pt0: {point0}", (10, 40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, 255, 2)
-        cv2.putText(self.image, f"pt1: {point1}", (10, 100), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, 255, 2)
+        if draw:
+            cv2.line(self.image, pt0, pt1, color, lw, cv2.LINE_AA)
+            cv2.putText(self.image, f"pt0: {point0}", (10, 40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, 255, 2)
+            cv2.putText(self.image, f"pt1: {point1}", (10, 100), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, 255, 2)
         return point0, point1
 
     def draw_model_axes(self, face: Face, length: float, lw: int = 2) -> None:
