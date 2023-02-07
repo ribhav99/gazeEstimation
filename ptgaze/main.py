@@ -250,6 +250,7 @@ def find_correct_plane(lines, z_range=(-101, 101)):
 
 
 def graph_lines(points):
+    return
     cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
     lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
     fig = plt.figure()
