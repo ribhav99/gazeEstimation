@@ -137,7 +137,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.fps = args.fps
     if not args.no_screen and args.gaze_array:
         if args.no_gaze_array:
-            graph_lines(args.gaze_array + args.no_gaze_array)
+            graph_lines([args.gaze_array, args.no_gaze_array])
         else:
             graph_lines(args.gaze_array)
     return config
@@ -226,9 +226,9 @@ def _get_zplane_and_spread(points):
     return False, False, False, False
 
 
-def find_correct_plane(lines, z_range=(-101, 101)):
+def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     print('Calculating intersections')
-    args = [{'z': z, 'lines': lines} for z in range(*z_range)]
+    args = [{'z': z, 'lines': lines} for z in np.arange(*z_range)]
     # args = [{'z': z, 'lines': lines} for z in range(0, 3)]
     
     # The result is a 3d Array:
@@ -243,47 +243,55 @@ def find_correct_plane(lines, z_range=(-101, 101)):
     spread, mp = result1[:, 0].tolist(), result1[:, 1].tolist()
     smallest_spread = min(spread)
     index = spread.index(smallest_spread)
-    z_value = range(*z_range)[index]
+    z_value = np.arange(*z_range)[index]
     avg_smallest_spread = smallest_spread / len(lines)
     tightest_intersections = intersections[index]
-    return z_value, avg_smallest_spread, mp[index], tightest_intersections
+    return float(z_value), avg_smallest_spread, mp[index], tightest_intersections
 
 
 def graph_lines(points):
-    return
-    cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
-    lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
+    # Gaze and no gaze array
+    if type(points[0]) == list:
+        gaze_points, no_gaze_points = points[0], points[1]
+        gaze_cords = [(float(gaze_points[i]), float(gaze_points[i+1]), float(gaze_points[i+2])) for i in range(0, len(gaze_points) - 2, 3)]
+        gaze_lines = [(gaze_cords[i], gaze_cords[i+1]) for i in range(0, len(gaze_cords)-1, 2)]
+        no_gaze_cords = [(float(no_gaze_points[i]), float(no_gaze_points[i+1]), float(no_gaze_points[i+2])) for i in range(0, len(no_gaze_points) - 2, 3)]
+        no_gaze_lines = [(no_gaze_cords[i], no_gaze_cords[i+1]) for i in range(0, len(no_gaze_cords)-1, 2)]
+    else:
+        gaze_points = points
+        gaze_cords = [(float(gaze_points[i]), float(gaze_points[i+1]), float(gaze_points[i+2])) for i in range(0, len(gaze_points) - 2, 3)]
+        gaze_lines = [(gaze_cords[i], gaze_cords[i+1]) for i in range(0, len(gaze_cords)-1, 2)]
+        no_gaze_lines = []
+    
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    x = np.linspace(-2.0, 2.0, 100)
-    y = np.linspace(-2.0, 2.0, 100)
+    ax = fig.add_subplot(projection='3d')
+    x = [-2, 2]
 
-    for i in lines:
-        line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
-                sympy.Point3D(i[1][0], i[1][1], i[1][2]))
-        z = str(line.equation()[0])
-        print(z)
-        index1 = z.index('*x')
-        index2 = z.index('*y')
-        y_operator = z[index1+3]
-        k_operator = z[index2+3]
-        x_coeff = float(z[:index1])
-        y_coeff = float(z[index1+5:index2])
-        y_coeff = y_coeff if y_operator == '+' else -1 * y_coeff
-        k_coeff = float(z[index2+5:])
-        k_coeff = k_coeff if k_operator == '+' else -1 * k_coeff
-        
-        # The signs are not always +, accounted for this with 
-        # y_operator and k_operator
-        z = x_coeff*x + y_coeff*y + k_coeff  
-        
-        # x, y, z = [i[0][0], i[1][0]], [i[0][1], i[1][1]], [i[0][2], i[1][2]]
-        ax.plot(x, y, z)
+    for i in gaze_lines:
+        # line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
+        #         sympy.Point3D(i[1][0], i[1][1], i[1][2]))
+        l = i[0][0] - i[1][0]
+        m = i[0][1] - i[1][1]
+        n = i[0][2] - i[1][2]
+        min_x_eq = (x[0] - i[0][0]) / l
+        max_x_eq = (x[1] - i[0][0]) / l
+        left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+        right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+        ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
+                color='green')
+    
+    for i in no_gaze_lines:
+        # line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
+        #         sympy.Point3D(i[1][0], i[1][1], i[1][2]))
+        l = i[0][0] - i[1][0]
+        m = i[0][1] - i[1][1]
+        n = i[0][2] - i[1][2]
+        min_x_eq = (x[0] - i[0][0]) / l
+        max_x_eq = (x[1] - i[0][0]) / l
+        left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+        right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+        ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
+                color='red')
 
-    a, b = np.meshgrid(x, y)
-    eq = 0*a + 0*b - 0
-    ax.plot_surface(a, b, eq)
-    plane = sympy.Plane((1, 1, 0), 
-                        (4, 5, 0), 
-                        (4, 6, 0))
     plt.show()
+    
