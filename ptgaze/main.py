@@ -249,7 +249,7 @@ def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     return float(z_value), avg_smallest_spread, mp[index], tightest_intersections
 
 
-def graph_lines(points):
+def graph_lines(points, extend_lines=False):
     # Gaze and no gaze array
     if type(points[0]) == list:
         gaze_points, no_gaze_points = points[0], points[1]
@@ -265,33 +265,40 @@ def graph_lines(points):
     
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
-    x = [-2, 2]
+
+
+    x = [-0.5, 0.5]
 
     for i in gaze_lines:
-        # line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
-        #         sympy.Point3D(i[1][0], i[1][1], i[1][2]))
-        l = i[0][0] - i[1][0]
-        m = i[0][1] - i[1][1]
-        n = i[0][2] - i[1][2]
-        min_x_eq = (x[0] - i[0][0]) / l
-        max_x_eq = (x[1] - i[0][0]) / l
-        left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
-        right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+        if extend_lines:
+            l = i[0][0] - i[1][0]
+            m = i[0][1] - i[1][1]
+            n = i[0][2] - i[1][2]
+            min_x_eq = (x[0] - i[0][0]) / l
+            max_x_eq = (x[1] - i[0][0]) / l
+            left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+            right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+        else:
+            left_point = i[0]
+            right_point = i[1]
         ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
                 color='green')
     
     for i in no_gaze_lines:
-        # line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
-        #         sympy.Point3D(i[1][0], i[1][1], i[1][2]))
-        l = i[0][0] - i[1][0]
-        m = i[0][1] - i[1][1]
-        n = i[0][2] - i[1][2]
-        min_x_eq = (x[0] - i[0][0]) / l
-        max_x_eq = (x[1] - i[0][0]) / l
-        left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
-        right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+        if extend_lines:
+            l = i[0][0] - i[1][0]
+            m = i[0][1] - i[1][1]
+            n = i[0][2] - i[1][2]
+            min_x_eq = (x[0] - i[0][0]) / l
+            max_x_eq = (x[1] - i[0][0]) / l
+            left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+            right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+        else:
+            left_point = i[0]
+            right_point = i[1]
         ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
                 color='red')
+        
 
     plt.show()
     
