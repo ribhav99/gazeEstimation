@@ -88,6 +88,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--gaze_array', nargs='+', default=False)
     parser.add_argument('--fps', default=30)
     parser.add_argument('--no_draw', action='store_false')
+    parser.add_argument('--z_val', type=float, default=False)
+    parser.add_argument('--gaze_vector_file', type=str, default=False)
     return parser.parse_args()
 
 
@@ -135,8 +137,12 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.log = True if args.log else False
     config.no_gaze_array = args.no_gaze_array if args.no_gaze_array else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
-    config.gaze_zvalue, config.gaze_spread, _, config.gaze_intersections = _get_zplane_and_spread(config.gaze_array)
-    config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
+    if args.z_val:
+        config.gaze_zvalue = args.z_val
+        config.no_gaze_zvalue = args.z_val
+    else:
+        config.gaze_zvalue, config.gaze_spread, _, config.gaze_intersections = _get_zplane_and_spread(config.gaze_array)
+        config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
     config.fps = args.fps
     config.clusters, config.intersections = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_array + config.no_gaze_array) \
         if config.gaze_array and config.no_gaze_array else False
@@ -147,6 +153,10 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
             graph_lines([args.gaze_array, args.no_gaze_array])
         else:
             graph_lines(args.gaze_array)
+    #TODO: Create a function to take in args.z_val and args.gaze_vector_file and gives out the cluster centers and classifies 
+    # each point. Use this info to decide center corresponding to gaze. 
+    # Then go into annotating the video. True if it's classified as gaze center. Else False.
+    # Maybe later classify into which cluster instead of just true or false
     return config
 
 
