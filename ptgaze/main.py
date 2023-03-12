@@ -251,7 +251,6 @@ def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
 
 def cluster_midpoints(array, z_val):
     print('Getting Cluster Midpoints')
-    
     pass
 
 
