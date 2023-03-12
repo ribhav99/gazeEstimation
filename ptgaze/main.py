@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import trange
 import multiprocessing
+from multiprocessing import get_context, Pool
 from pqdm.processes import pqdm
 
 import torch
@@ -20,7 +21,7 @@ from utils import (check_path_all, download_dlib_pretrained_model,
                     generate_dummy_camera_params, Point, lineLineIntersection)
 
 logger = logging.getLogger(__name__)
-
+from pqdm.processes import pqdm
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -140,6 +141,8 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
             graph_lines([args.gaze_array, args.no_gaze_array])
         else:
             graph_lines(args.gaze_array)
+    config.clusters = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_array + config.no_gaze_array) \
+        if config.gaze_array and config.no_gaze_array else False
     return config
 
 
@@ -228,15 +231,17 @@ def _get_zplane_and_spread(points):
 
 def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     print('Calculating intersections')
-    args = [{'z': z, 'lines': lines} for z in np.arange(*z_range)]
+    args = [[z, lines] for z in np.arange(*z_range)]
     # args = [{'z': z, 'lines': lines} for z in range(0, 3)]
     
     # The result is a 3d Array:
     # 2: 3D point of intersection between line and plane
     # 1: array of intersections of 3D points and particular plane
     # 0: array of '1', each element corresponds to a different plane
-    result = pqdm(args, plane_lines_intersections, n_jobs=multiprocessing.cpu_count(), 
-                  argument_type='kwargs')
+    # result = pqdm(args, plane_lines_intersections, n_jobs=1, # TODO: n_jobs=multiprocessing.cpu_count() for non arm devices.
+    #               argument_type='kwargs')
+    with get_context("fork").Pool(multiprocessing.cpu_count()) as p:
+        result = p.starmap(plane_lines_intersections, args)
     print('Calculating best plane of intersection')
     intersections = [i for i in result]
     result1 = np.array(pqdm(intersections, find_spread, n_jobs=1))
@@ -249,9 +254,22 @@ def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     return float(z_value), avg_smallest_spread, mp[index], tightest_intersections
 
 
-def cluster_midpoints(array, z_val):
+def cluster_midpoints(z_val, points):
+    # Points is a combination of the gaze and no gaze array
     print('Getting Cluster Midpoints')
-    pass
+    if points:
+        cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
+        lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
+        
+        lines_3d = []
+        for i in lines:
+            line = sympy.Line3D(sympy.Point3D(i[0][0], i[0][1], i[0][2]),
+                sympy.Point3D(i[1][0], i[1][1], i[1][2]))
+            lines_3d.append(line)
+    
+        intersections = plane_lines_intersections(z_val, lines_3d)
+        print(intersections)
+    return False
 
 
 def graph_lines(points, extend_lines=False):
