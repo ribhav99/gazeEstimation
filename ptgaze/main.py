@@ -240,13 +240,19 @@ def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     print('Calculating best plane of intersection')
     intersections = [i for i in result]
     result1 = np.array(pqdm(intersections, find_spread, n_jobs=1))
-    spread, mp = result1[:, 0].tolist(), result1[:, 1].tolist()
+    spread, mp = result1[:, 0].tolist(), result1[:, 1].tolist() # distances, midpoints
     smallest_spread = min(spread)
     index = spread.index(smallest_spread)
     z_value = np.arange(*z_range)[index]
     avg_smallest_spread = smallest_spread / len(lines)
     tightest_intersections = intersections[index]
     return float(z_value), avg_smallest_spread, mp[index], tightest_intersections
+
+
+def cluster_midpoints(array, z_val):
+    print('Getting Cluster Midpoints')
+    
+    pass
 
 
 def graph_lines(points, extend_lines=False):
