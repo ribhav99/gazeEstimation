@@ -10,6 +10,7 @@ from tqdm import trange
 import multiprocessing
 from multiprocessing import get_context, Pool
 from pqdm.processes import pqdm
+from sklearn.cluster import KMeans
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -136,13 +137,16 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.gaze_zvalue, config.gaze_spread, _, config.gaze_intersections = _get_zplane_and_spread(config.gaze_array)
     config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
     config.fps = args.fps
+    #TODO: Clusters function return type cannot be list. must be primitive. Figure that out
+    config.clusters = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_array + config.no_gaze_array) \
+        if config.gaze_array and config.no_gaze_array else False
     if not args.no_screen and args.gaze_array:
-        if args.no_gaze_array:
+        if args.no_gaze_array and args.gaze_array and config.clusters:
+            graph_lines([args.gaze_array, args.no_gaze_array], config.clusters)
+        elif args.no_gaze_array:
             graph_lines([args.gaze_array, args.no_gaze_array])
         else:
             graph_lines(args.gaze_array)
-    config.clusters = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_array + config.no_gaze_array) \
-        if config.gaze_array and config.no_gaze_array else False
     return config
 
 
@@ -268,11 +272,16 @@ def cluster_midpoints(z_val, points):
             lines_3d.append(line)
     
         intersections = plane_lines_intersections(z_val, lines_3d)
-        print(intersections)
+        intersections = [i[0] for i in intersections]
+        intersections = [[i.x, i.y, i.z] for i in intersections]
+        kmeans = KMeans(n_clusters=5)
+        kmeans.fit(intersections)
+        return kmeans.cluster_centers_.tolist()
+
     return False
 
 
-def graph_lines(points, extend_lines=False):
+def graph_lines(points, clusters=False, extend_lines=False):
     # Gaze and no gaze array
     if type(points[0]) == list:
         gaze_points, no_gaze_points = points[0], points[1]
@@ -321,7 +330,13 @@ def graph_lines(points, extend_lines=False):
             right_point = i[1]
         ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
                 color='red')
-        
+    
+    if clusters:
+        #TODO: plot clusters here
+        print(clusters)
+        print(clusters[0])
+        for mp in clusters.tolist():
+            ax.plot(mp)
 
     plt.show()
     
