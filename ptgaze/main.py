@@ -14,6 +14,7 @@ from sklearn.cluster import KMeans
 
 import torch
 from omegaconf import DictConfig, OmegaConf
+import json
 
 from demo import Demo
 from utils import (check_path_all, download_dlib_pretrained_model,
@@ -137,12 +138,11 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.gaze_zvalue, config.gaze_spread, _, config.gaze_intersections = _get_zplane_and_spread(config.gaze_array)
     config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
     config.fps = args.fps
-    #TODO: Clusters function return type cannot be list. must be primitive. Figure that out
-    config.clusters = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_array + config.no_gaze_array) \
+    config.clusters, config.intersections = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_array + config.no_gaze_array) \
         if config.gaze_array and config.no_gaze_array else False
     if not args.no_screen and args.gaze_array:
         if args.no_gaze_array and args.gaze_array and config.clusters:
-            graph_lines([args.gaze_array, args.no_gaze_array], config.clusters)
+            graph_lines([args.gaze_array, args.no_gaze_array], config.clusters, config.intersections)
         elif args.no_gaze_array:
             graph_lines([args.gaze_array, args.no_gaze_array])
         else:
@@ -236,14 +236,11 @@ def _get_zplane_and_spread(points):
 def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     print('Calculating intersections')
     args = [[z, lines] for z in np.arange(*z_range)]
-    # args = [{'z': z, 'lines': lines} for z in range(0, 3)]
     
     # The result is a 3d Array:
     # 2: 3D point of intersection between line and plane
     # 1: array of intersections of 3D points and particular plane
     # 0: array of '1', each element corresponds to a different plane
-    # result = pqdm(args, plane_lines_intersections, n_jobs=1, # TODO: n_jobs=multiprocessing.cpu_count() for non arm devices.
-    #               argument_type='kwargs')
     with get_context("fork").Pool(multiprocessing.cpu_count()) as p:
         result = p.starmap(plane_lines_intersections, args)
     print('Calculating best plane of intersection')
@@ -273,15 +270,15 @@ def cluster_midpoints(z_val, points):
     
         intersections = plane_lines_intersections(z_val, lines_3d)
         intersections = [i[0] for i in intersections]
-        intersections = [[i.x, i.y, i.z] for i in intersections]
+        intersections = [[float(i.x), float(i.y), float(i.z)] for i in intersections]
         kmeans = KMeans(n_clusters=5)
         kmeans.fit(intersections)
-        return kmeans.cluster_centers_.tolist()
-
+        centers = kmeans.cluster_centers_.tolist()
+        return json.dumps(centers), json.dumps(intersections)
     return False
 
 
-def graph_lines(points, clusters=False, extend_lines=False):
+def graph_lines(points, clusters=False, intersections=False, extend_lines=False):
     # Gaze and no gaze array
     if type(points[0]) == list:
         gaze_points, no_gaze_points = points[0], points[1]
@@ -296,7 +293,8 @@ def graph_lines(points, clusters=False, extend_lines=False):
         no_gaze_lines = []
     
     fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
+    ax = fig.add_subplot(1, 2, 1, projection='3d')
+    ax1 = fig.add_subplot(1, 2, 2, projection='3d')
 
 
     x = [-0.5, 0.5]
@@ -332,11 +330,13 @@ def graph_lines(points, clusters=False, extend_lines=False):
                 color='red')
     
     if clusters:
-        #TODO: plot clusters here
-        print(clusters)
-        print(clusters[0])
-        for mp in clusters.tolist():
-            ax.plot(mp)
+        centers = json.loads(clusters)
+        for mp in centers:
+            ax1.scatter(*mp, color='green')
+    if intersections:
+        intersecs = json.loads(intersections)
+        for intersec in intersecs:
+            ax1.scatter(*intersec, color='red')
 
     plt.show()
     
