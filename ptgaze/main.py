@@ -90,6 +90,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--no_draw', action='store_false')
     parser.add_argument('--z_val', type=float, default=False)
     parser.add_argument('--gaze_vector_file', type=str, default=False)
+    parser.add_argument('--write_file', type=bool, default=False)
     return parser.parse_args()
 
 
@@ -134,19 +135,25 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
         if not config.demo.output_dir:
             config.demo.output_dir = 'outputs'
     config.no_draw = args.no_draw
+    config.write_file = args.write_file
     config.log = True if args.log else False
     config.no_gaze_array = args.no_gaze_array if args.no_gaze_array else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
     if args.z_val:
         config.gaze_zvalue = args.z_val
         config.no_gaze_zvalue = args.z_val
+        config.gaze_intersections = False
+        config.no_gaze_intersections = False
     else:
         config.gaze_zvalue, config.gaze_spread, _, config.gaze_intersections = _get_zplane_and_spread(config.gaze_array)
         config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
     config.fps = args.fps
-    config.clusters, config.intersections = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_array + config.no_gaze_array) \
-        if config.gaze_array and config.no_gaze_array else False
+    config.gaze_vector_file = args.gaze_vector_file if args.gaze_vector_file else False
+    config.clusters, config.intersections = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_vector_file) \
+        if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False)
     if not args.no_screen and args.gaze_array:
+        #TODO: change conditions for graphing. We want to graph clusters without gaze arrays cause the whole
+        # point is automation
         if args.no_gaze_array and args.gaze_array and config.clusters:
             graph_lines([args.gaze_array, args.no_gaze_array], config.clusters, config.intersections)
         elif args.no_gaze_array:
@@ -265,10 +272,24 @@ def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     return float(z_value), avg_smallest_spread, mp[index], tightest_intersections
 
 
-def cluster_midpoints(z_val, points):
-    # Points is a combination of the gaze and no gaze array
+def cluster_midpoints(z_val, gaze_vector_file):
+    # gaze_vector_file is a text file containing all gaze direction info
     print('Getting Cluster Midpoints')
-    if points:
+    if gaze_vector_file:
+        with open(gaze_vector_file, 'r') as f:
+            f_lines = f.readlines()
+        points = []
+        for i in range(len(f_lines)): # do this in parallel
+            text = f_lines[i]
+            first_start_index = text.index('[')
+            first_end_index = text.index(']') + 1
+            second_start_index = text[first_end_index:].index('[') + first_end_index
+            second_end_index = text[first_end_index+1:].index(']') + 2 + first_end_index
+            arr1 = json.loads(text[first_start_index:first_end_index])
+            arr2 = json.loads(text[second_start_index:second_end_index])
+
+            points += arr1 + arr2
+
         cords = [(float(points[i]), float(points[i+1]), float(points[i+2])) for i in range(0, len(points) - 2, 3)]
         lines = [(cords[i], cords[i+1]) for i in range(0, len(cords)-1, 2)]
         
@@ -283,9 +304,10 @@ def cluster_midpoints(z_val, points):
         intersections = [[float(i.x), float(i.y), float(i.z)] for i in intersections]
         kmeans = KMeans(n_clusters=5)
         kmeans.fit(intersections)
+        #TODO: classify intersections into clusters and return center with most intersections
         centers = kmeans.cluster_centers_.tolist()
         return json.dumps(centers), json.dumps(intersections)
-    return False
+    return False, False
 
 
 def graph_lines(points, clusters=False, intersections=False, extend_lines=False):

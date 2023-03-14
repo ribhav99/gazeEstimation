@@ -250,7 +250,7 @@ class Demo:
         else:
             raise ValueError
         
-        if self.config.gaze_array:
+        if self.config.gaze_zvalue:
             pred = self._predict_gaze_ground_truth(pt0, pt1)
             self.visualizer.write_prediction(pred)
         return pt0, pt1
@@ -261,9 +261,11 @@ class Demo:
         Using that information, predict whether gaze is being made when
         gaze points are pt0 and pt1
         '''
-        pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
+        #TODO: Change this function up to match the current workflow
+        if self.config.write_file:
+            pred_file = open(os.path.join(self.config.demo.output_dir, os.path.basename(self.config.demo.video_path)[:-4]) + '.txt', 'a')
         gaze_line = sympy.Line3D(sympy.Point3D(*pt0), sympy.Point3D(*pt1))
-        if not self.config.no_gaze_array:
+        if not self.config.no_gaze_array and self.config.gaze_intersections:
 
             plane = sympy.Plane((1, 1, self.config.gaze_zvalue), 
                                 (4, 5, self.config.gaze_zvalue), 
@@ -277,7 +279,7 @@ class Demo:
                     pred_file.close()
                     return True
 
-        else:
+        elif self.config.no_gaze_array:
             z_value = self.config.gaze_zvalue + self.config.no_gaze_zvalue
             z_value /= 2
             plane = sympy.Plane((1, 1, z_value), 
@@ -294,8 +296,9 @@ class Demo:
                     pred_file.write(f'True {pt0} {pt1}\n')
                     pred_file.close()
                     return True
-
-
-        pred_file.write(f'False {pt0} {pt1}\n')
-        pred_file.close()
+        else:
+            if self.config.write_file:
+                pred_file.write(f'False {pt0.tolist()} {pt1.tolist()}\n')
+        if self.config.write_file:
+            pred_file.close()
         return False
