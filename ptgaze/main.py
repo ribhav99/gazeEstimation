@@ -90,7 +90,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--no_draw', action='store_false')
     parser.add_argument('--z_val', type=float, default=False)
     parser.add_argument('--gaze_vector_file', type=str, default=False)
-    parser.add_argument('--write_file', type=bool, default=False)
+    parser.add_argument('--write_file', action='store_true')
+    parser.add_argument('--no_model', action='store_true')
     return parser.parse_args()
 
 
@@ -151,19 +152,20 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.gaze_vector_file = args.gaze_vector_file if args.gaze_vector_file else False
     config.clusters, config.intersections = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_vector_file) \
         if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False)
-    if not args.no_screen and args.gaze_array:
-        #TODO: change conditions for graphing. We want to graph clusters without gaze arrays cause the whole
-        # point is automation
+    if not args.no_screen:
         if args.no_gaze_array and args.gaze_array and config.clusters:
             graph_lines([args.gaze_array, args.no_gaze_array], config.clusters, config.intersections)
-        elif args.no_gaze_array:
+        elif args.no_gaze_array and args.gaze_array:
             graph_lines([args.gaze_array, args.no_gaze_array])
-        else:
+        elif args.gaze_array:
             graph_lines(args.gaze_array)
+        elif config.clusters and config.intersections:
+            graph_lines(False, config.clusters, config.intersections)
     #TODO: Create a function to take in args.z_val and args.gaze_vector_file and gives out the cluster centers and classifies 
     # each point. Use this info to decide center corresponding to gaze. 
     # Then go into annotating the video. True if it's classified as gaze center. Else False.
     # Maybe later classify into which cluster instead of just true or false
+    config.no_model = args.no_model
     return config
 
 
@@ -196,9 +198,10 @@ def main():
         elif config.mode == 'ETH-XGaze':
             download_ethxgaze_model()
 
-    check_path_all(config)
-    demo = Demo(config)
-    demo.run()
+    if not config.no_model:
+        check_path_all(config)
+        demo = Demo(config)
+        demo.run()
 
 
 def plane_lines_intersections(z, lines):
@@ -312,63 +315,66 @@ def cluster_midpoints(z_val, gaze_vector_file):
 
 def graph_lines(points, clusters=False, intersections=False, extend_lines=False):
     # Gaze and no gaze array
-    if type(points[0]) == list:
-        gaze_points, no_gaze_points = points[0], points[1]
-        gaze_cords = [(float(gaze_points[i]), float(gaze_points[i+1]), float(gaze_points[i+2])) for i in range(0, len(gaze_points) - 2, 3)]
-        gaze_lines = [(gaze_cords[i], gaze_cords[i+1]) for i in range(0, len(gaze_cords)-1, 2)]
-        no_gaze_cords = [(float(no_gaze_points[i]), float(no_gaze_points[i+1]), float(no_gaze_points[i+2])) for i in range(0, len(no_gaze_points) - 2, 3)]
-        no_gaze_lines = [(no_gaze_cords[i], no_gaze_cords[i+1]) for i in range(0, len(no_gaze_cords)-1, 2)]
-    else:
-        gaze_points = points
-        gaze_cords = [(float(gaze_points[i]), float(gaze_points[i+1]), float(gaze_points[i+2])) for i in range(0, len(gaze_points) - 2, 3)]
-        gaze_lines = [(gaze_cords[i], gaze_cords[i+1]) for i in range(0, len(gaze_cords)-1, 2)]
-        no_gaze_lines = []
-    
     fig = plt.figure()
-    ax = fig.add_subplot(1, 2, 1, projection='3d')
-    ax1 = fig.add_subplot(1, 2, 2, projection='3d')
-
-
-    x = [-0.5, 0.5]
-
-    for i in gaze_lines:
-        if extend_lines:
-            l = i[0][0] - i[1][0]
-            m = i[0][1] - i[1][1]
-            n = i[0][2] - i[1][2]
-            min_x_eq = (x[0] - i[0][0]) / l
-            max_x_eq = (x[1] - i[0][0]) / l
-            left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
-            right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+    if points:
+        if type(points[0]) == list:
+            gaze_points, no_gaze_points = points[0], points[1]
+            gaze_cords = [(float(gaze_points[i]), float(gaze_points[i+1]), float(gaze_points[i+2])) for i in range(0, len(gaze_points) - 2, 3)]
+            gaze_lines = [(gaze_cords[i], gaze_cords[i+1]) for i in range(0, len(gaze_cords)-1, 2)]
+            no_gaze_cords = [(float(no_gaze_points[i]), float(no_gaze_points[i+1]), float(no_gaze_points[i+2])) for i in range(0, len(no_gaze_points) - 2, 3)]
+            no_gaze_lines = [(no_gaze_cords[i], no_gaze_cords[i+1]) for i in range(0, len(no_gaze_cords)-1, 2)]
         else:
-            left_point = i[0]
-            right_point = i[1]
-        ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
-                color='green')
-    
-    for i in no_gaze_lines:
-        if extend_lines:
-            l = i[0][0] - i[1][0]
-            m = i[0][1] - i[1][1]
-            n = i[0][2] - i[1][2]
-            min_x_eq = (x[0] - i[0][0]) / l
-            max_x_eq = (x[1] - i[0][0]) / l
-            left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
-            right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
-        else:
-            left_point = i[0]
-            right_point = i[1]
-        ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
-                color='red')
+            gaze_points = points
+            gaze_cords = [(float(gaze_points[i]), float(gaze_points[i+1]), float(gaze_points[i+2])) for i in range(0, len(gaze_points) - 2, 3)]
+            gaze_lines = [(gaze_cords[i], gaze_cords[i+1]) for i in range(0, len(gaze_cords)-1, 2)]
+            no_gaze_lines = []
+        
+        ax = fig.add_subplot(221, projection='3d')
+
+
+        x = [-0.5, 0.5]
+
+        for i in gaze_lines:
+            if extend_lines:
+                l = i[0][0] - i[1][0]
+                m = i[0][1] - i[1][1]
+                n = i[0][2] - i[1][2]
+                min_x_eq = (x[0] - i[0][0]) / l
+                max_x_eq = (x[1] - i[0][0]) / l
+                left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+                right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+            else:
+                left_point = i[0]
+                right_point = i[1]
+            ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
+                    color='green')
+        
+        for i in no_gaze_lines:
+            if extend_lines:
+                l = i[0][0] - i[1][0]
+                m = i[0][1] - i[1][1]
+                n = i[0][2] - i[1][2]
+                min_x_eq = (x[0] - i[0][0]) / l
+                max_x_eq = (x[1] - i[0][0]) / l
+                left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+                right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
+            else:
+                left_point = i[0]
+                right_point = i[1]
+            ax.plot([left_point[0], right_point[0]], [left_point[1], right_point[1]], [left_point[2], right_point[2]],
+                    color='red')
     
     if clusters:
+        ax1 = fig.add_subplot(222, projection='3d')
+        ax2 = fig.add_subplot(223)
         centers = json.loads(clusters)
+        if intersections:
+            intersecs = json.loads(intersections)
+            for intersec in intersecs:
+                ax2.scatter(*intersec[:-1], color='red')
         for mp in centers:
             ax1.scatter(*mp, color='green')
-    if intersections:
-        intersecs = json.loads(intersections)
-        for intersec in intersecs:
-            ax1.scatter(*intersec, color='red')
+            ax2.scatter(*mp[:-1], color='green')
 
     plt.show()
     
