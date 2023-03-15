@@ -150,8 +150,8 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
         config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
     config.fps = args.fps
     config.gaze_vector_file = args.gaze_vector_file if args.gaze_vector_file else False
-    config.clusters, config.intersections = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_vector_file) \
-        if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False)
+    config.clusters, config.intersections, config.gaze_cluster = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_vector_file) \
+        if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False, False)
     if not args.no_screen:
         if args.no_gaze_array and args.gaze_array and config.clusters:
             graph_lines([args.gaze_array, args.no_gaze_array], config.clusters, config.intersections)
@@ -163,6 +163,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
             graph_lines(False, config.clusters, config.intersections)
     #TODO: Create a function to take in args.z_val and args.gaze_vector_file and gives out the cluster centers and classifies 
     # each point. Use this info to decide center corresponding to gaze. 
+    # Above part is done. Now do:
     # Then go into annotating the video. True if it's classified as gaze center. Else False.
     # Maybe later classify into which cluster instead of just true or false
     config.no_model = args.no_model
@@ -306,11 +307,12 @@ def cluster_midpoints(z_val, gaze_vector_file):
         intersections = [i[0] for i in intersections]
         intersections = [[float(i.x), float(i.y), float(i.z)] for i in intersections]
         kmeans = KMeans(n_clusters=5)
-        kmeans.fit(intersections)
-        #TODO: classify intersections into clusters and return center with most intersections
+        cluster_assignments = kmeans.fit_predict(intersections)
+        cluster_indices, counts = np.unique(cluster_assignments, return_counts=True)
+        gaze_cluster = cluster_indices[np.argmax(counts)]
         centers = kmeans.cluster_centers_.tolist()
-        return json.dumps(centers), json.dumps(intersections)
-    return False, False
+        return json.dumps(centers), json.dumps(intersections), gaze_cluster
+    return False, False, False
 
 
 def graph_lines(points, clusters=False, intersections=False, extend_lines=False):
