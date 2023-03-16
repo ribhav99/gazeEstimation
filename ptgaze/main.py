@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import trange
 import multiprocessing
-from multiprocessing import get_context, Pool
+from multiprocessing import get_context
 from pqdm.processes import pqdm
 from sklearn.cluster import KMeans
 
@@ -311,7 +311,7 @@ def cluster_midpoints(z_val, gaze_vector_file):
         cluster_indices, counts = np.unique(cluster_assignments, return_counts=True)
         gaze_cluster = cluster_indices[np.argmax(counts)]
         centers = kmeans.cluster_centers_.tolist()
-        return json.dumps(centers), json.dumps(intersections), gaze_cluster
+        return json.dumps(centers), json.dumps(intersections), int(gaze_cluster)
     return False, False, False
 
 
@@ -331,10 +331,10 @@ def graph_lines(points, clusters=False, intersections=False, extend_lines=False)
             gaze_lines = [(gaze_cords[i], gaze_cords[i+1]) for i in range(0, len(gaze_cords)-1, 2)]
             no_gaze_lines = []
         
-        ax = fig.add_subplot(221, projection='3d')
+        ax = fig.add_subplot(121, projection='3d')
 
 
-        x = [-0.5, 0.5]
+        x = [-0.2, 0.2]
 
         for i in gaze_lines:
             if extend_lines:
@@ -343,7 +343,8 @@ def graph_lines(points, clusters=False, intersections=False, extend_lines=False)
                 n = i[0][2] - i[1][2]
                 min_x_eq = (x[0] - i[0][0]) / l
                 max_x_eq = (x[1] - i[0][0]) / l
-                left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+                # left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+                left_point = i[0]
                 right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
             else:
                 left_point = i[0]
@@ -358,7 +359,8 @@ def graph_lines(points, clusters=False, intersections=False, extend_lines=False)
                 n = i[0][2] - i[1][2]
                 min_x_eq = (x[0] - i[0][0]) / l
                 max_x_eq = (x[1] - i[0][0]) / l
-                left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+                # left_point = [x[0], (min_x_eq * m) + i[0][1], (min_x_eq * n) + i[0][2]]
+                left_point = i[0]
                 right_point = [x[1], (max_x_eq * m) + i[0][1], (max_x_eq * n) + i[0][2]]
             else:
                 left_point = i[0]
@@ -367,15 +369,25 @@ def graph_lines(points, clusters=False, intersections=False, extend_lines=False)
                     color='red')
     
     if clusters:
-        ax1 = fig.add_subplot(222, projection='3d')
-        ax2 = fig.add_subplot(223)
+        colours = ['red', 'yellow', 'blue', 'pink', 'black', 'brown', 'orange']
+        # ax1 = fig.add_subplot(222, projection='3d')
+        ax2 = fig.add_subplot(122)
         centers = json.loads(clusters)
+        cluster_objects = [sympy.Point3D(*i) for i in centers]
         if intersections:
             intersecs = json.loads(intersections)
             for intersec in intersecs:
-                ax2.scatter(*intersec[:-1], color='red')
+                intersec_object = sympy.Point3D(*intersec)
+                min_distance = np.inf
+                min_index = 0
+                for i in range(len(cluster_objects)):
+                    distance = intersec_object.distance(cluster_objects[i])
+                    if distance <= min_distance:
+                        min_index = i
+                        min_distance = distance
+                ax2.scatter(*intersec[:-1], color=colours[min_index])
         for mp in centers:
-            ax1.scatter(*mp, color='green')
+            # ax1.scatter(*mp, color='green')
             ax2.scatter(*mp[:-1], color='green')
 
     plt.show()

@@ -10,6 +10,7 @@ import numpy as np
 from omegaconf import DictConfig
 import sympy
 from tqdm import tqdm
+import json
 
 from common import Face, FacePartsName, Visualizer
 from gaze_estimator import GazeEstimator
@@ -250,9 +251,9 @@ class Demo:
         else:
             raise ValueError
         
-        if self.config.gaze_zvalue:
-            pred = self._predict_gaze_ground_truth(pt0, pt1)
-            self.visualizer.write_prediction(pred)
+        
+        pred = self._predict_gaze_ground_truth(pt0, pt1)
+        self.visualizer.write_prediction(pred)
         return pt0, pt1
 
     def _predict_gaze_ground_truth(self, pt0, pt1, error_factor=0.05):
@@ -275,8 +276,9 @@ class Demo:
             for i in self.config.intersections:
                 distance = float(intersec.distance(i))
                 if distance <= error_factor:
-                    pred_file.write(f'True {pt0} {pt1}\n')
-                    pred_file.close()
+                    if self.config.write_file:
+                        pred_file.write(f'True {pt0} {pt1}\n')
+                        pred_file.close()
                     return True
 
         elif self.config.no_gaze_array:
@@ -293,12 +295,38 @@ class Demo:
             for i in self.config.gaze_intersections:
                 new_distance = float(intersec.distance(i))
                 if new_distance <= distance:
-                    pred_file.write(f'True {pt0} {pt1}\n')
-                    pred_file.close()
+                    if self.config.write_file:
+                        pred_file.write(f'True {pt0} {pt1}\n')
+                        pred_file.close()
                     return True
-        else:
-            if self.config.write_file:
-                pred_file.write(f'False {pt0.tolist()} {pt1.tolist()}\n')
-        if self.config.write_file:
-            pred_file.close()
+        else: # Use clustering method
+            # self.config.gaze_cluster is defined as the index of gaze cluster
+            # self.config.clusters is the list of all clusters as a string. load to json first
+            clusters = json.loads(self.config.clusters)
+            z_value = self.config.gaze_zvalue + self.config.no_gaze_zvalue
+            z_value /= 2
+            # caluclate intersection of gaze_line with plane
+            plane = sympy.Plane((1, 1, z_value), 
+                                (4, 5, z_value), 
+                                (4, 6, z_value))
+            intersection = sympy.Point3D(*plane.intersection(gaze_line))
+            # Compute distance to all centers
+            min_distance = np.inf
+            min_index = 0
+            for i in range(len(clusters)):
+                distance = intersection.distance(clusters[i])
+                if distance <= min_distance:
+                    min_index = i
+                    min_distance = distance
+            # if distance with center[index] is minimum, then gaze = True else False
+            if min_index == self.config.gaze_cluster:
+                if self.config.write_file:
+                    pred_file.write(f'True {pt0.tolist()} {pt1.tolist()}\n')
+                    pred_file.close()
+                return True
+            else:
+                if self.config.write_file:
+                    pred_file.write(f'False {pt0.tolist()} {pt1.tolist()}\n')
+                    pred_file.close()
+                return False
         return False
