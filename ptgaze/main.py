@@ -15,6 +15,7 @@ from sklearn.cluster import KMeans
 import torch
 from omegaconf import DictConfig, OmegaConf
 import json
+from cluster_picker import ClusterPicker
 
 from demo import Demo
 from utils import (check_path_all, download_dlib_pretrained_model,
@@ -93,6 +94,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--write_file', action='store_true')
     parser.add_argument('--no_model', action='store_true')
     parser.add_argument('--cut_input_file', type=int, default=0)
+    parser.add_argument('--select_clusters', action='store_true')
     return parser.parse_args()
 
 
@@ -137,6 +139,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
         if not config.demo.output_dir:
             config.demo.output_dir = 'outputs'
     config.no_draw = args.no_draw
+    config.select_clusters = args.select_clusters
     config.write_file = args.write_file
     config.log = True if args.log else False
     config.cut_input_file = args.cut_input_file
@@ -153,7 +156,8 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.fps = args.fps
     config.gaze_vector_file = args.gaze_vector_file if args.gaze_vector_file else False
     config.clusters, config.intersections, config.gaze_cluster = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_vector_file,
-        config.cut_input_file) if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False, False)
+        config.cut_input_file, config.select_clusters) if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False, False)
+    print(config.clusters)
     if not args.no_screen:
         if args.no_gaze_array and args.gaze_array and config.clusters:
             graph_lines([args.gaze_array, args.no_gaze_array], config.clusters, config.intersections)
@@ -163,11 +167,6 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
             graph_lines(args.gaze_array)
         elif config.clusters and config.intersections:
             graph_lines(False, config.clusters, config.intersections)
-    #TODO: Create a function to take in args.z_val and args.gaze_vector_file and gives out the cluster centers and classifies 
-    # each point. Use this info to decide center corresponding to gaze. 
-    # Above part is done. Now do:
-    # Then go into annotating the video. True if it's classified as gaze center. Else False.
-    # Maybe later classify into which cluster instead of just true or false
     config.no_model = args.no_model
     return config
 
@@ -278,7 +277,7 @@ def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     return float(z_value), avg_smallest_spread, mp[index], tightest_intersections
 
 
-def cluster_midpoints(z_val, gaze_vector_file, cut_input_file):
+def cluster_midpoints(z_val, gaze_vector_file, cut_input_file, select_cluster):
     # gaze_vector_file is a text file containing all gaze direction info
     print('Getting Cluster Midpoints')
     if gaze_vector_file:
@@ -309,13 +308,19 @@ def cluster_midpoints(z_val, gaze_vector_file, cut_input_file):
     
         intersections = plane_lines_intersections(z_val, lines_3d)
         intersections = [i[0] for i in intersections]
-        intersections = [[float(i.x), float(i.y), float(i.z)] for i in intersections]
-        kmeans = KMeans(n_clusters=5)
-        cluster_assignments = kmeans.fit_predict(intersections)
-        cluster_indices, counts = np.unique(cluster_assignments, return_counts=True)
-        gaze_cluster = cluster_indices[np.argmax(counts)]
-        centers = kmeans.cluster_centers_.tolist()
-        return json.dumps(centers), json.dumps(intersections), int(gaze_cluster)
+        intersections = np.array([[float(i.x), float(i.y), float(i.z)] for i in intersections])
+        #TODO: handle the case where we manually select clusters
+        if select_cluster:
+            cluster_picker_obj = ClusterPicker(intersections[:, 0], intersections[:, 1])
+            gaze_cluster = cluster_picker_obj.gaze_cluster_index
+            centers = [[i.center[0], i.center[1], z_val] for i in cluster_picker_obj.clusters]
+        else:
+            kmeans = KMeans(n_clusters=5)
+            cluster_assignments = kmeans.fit_predict(intersections)
+            cluster_indices, counts = np.unique(cluster_assignments, return_counts=True)
+            gaze_cluster = cluster_indices[np.argmax(counts)]
+            centers = kmeans.cluster_centers_.tolist()
+        return json.dumps(centers), json.dumps(intersections.tolist()), int(gaze_cluster)
     return False, False, False
 
 
