@@ -64,6 +64,8 @@ class Demo:
                 if key_pressed:
                     self._process_image(image)
                 cv2.imshow('image', self.visualizer.image)
+        else:
+            self._process_image(image)
         if self.config.demo.output_dir:
             name = pathlib.Path(self.config.demo.image_path).name
             output_path = pathlib.Path(self.config.demo.output_dir) / name
@@ -299,7 +301,7 @@ class Demo:
                         pred_file.write(f'True {pt0} {pt1}\n')
                         pred_file.close()
                     return True
-        else: # Use clustering method
+        elif self.config.clusters: # Use clustering method
             # self.config.gaze_cluster is defined as the index of gaze cluster
             # self.config.clusters is the list of all clusters as a string. load to json first
             clusters = json.loads(self.config.clusters)
@@ -329,4 +331,8 @@ class Demo:
                     pred_file.write(f'False {pt0.tolist()} {pt1.tolist()}\n')
                     pred_file.close()
                 return False
+        else:
+            if self.config.write_file:
+                    pred_file.write(f'False {pt0.tolist()} {pt1.tolist()}\n')
+                    pred_file.close()
         return False

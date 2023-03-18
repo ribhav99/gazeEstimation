@@ -52,7 +52,7 @@ def parse_args() -> argparse.Namespace:
         '(default: \'mediapipe\')')
     parser.add_argument('--device',
                         type=str,
-                        choices=['cpu', 'cuda'],
+                        choices=['cpu', 'cuda', 'mps'],
                         help='Device used for model inference.')
     parser.add_argument('--image',
                         type=str,
@@ -92,6 +92,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--gaze_vector_file', type=str, default=False)
     parser.add_argument('--write_file', action='store_true')
     parser.add_argument('--no_model', action='store_true')
+    parser.add_argument('--cut_input_file', type=int, default=0)
     return parser.parse_args()
 
 
@@ -138,6 +139,7 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
     config.no_draw = args.no_draw
     config.write_file = args.write_file
     config.log = True if args.log else False
+    config.cut_input_file = args.cut_input_file
     config.no_gaze_array = args.no_gaze_array if args.no_gaze_array else False
     config.gaze_array = args.gaze_array if args.gaze_array else False
     if args.z_val:
@@ -150,8 +152,8 @@ def load_mode_config(args: argparse.Namespace) -> DictConfig:
         config.no_gaze_zvalue, config.no_gaze_spread, _, config.no_gaze_intersections = _get_zplane_and_spread(config.no_gaze_array)
     config.fps = args.fps
     config.gaze_vector_file = args.gaze_vector_file if args.gaze_vector_file else False
-    config.clusters, config.intersections, config.gaze_cluster = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_vector_file) \
-        if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False, False)
+    config.clusters, config.intersections, config.gaze_cluster = cluster_midpoints((config.gaze_zvalue + config.no_gaze_zvalue) / 2, config.gaze_vector_file,
+        config.cut_input_file) if config.gaze_vector_file and config.gaze_zvalue and config.no_gaze_zvalue else (False, False, False)
     if not args.no_screen:
         if args.no_gaze_array and args.gaze_array and config.clusters:
             graph_lines([args.gaze_array, args.no_gaze_array], config.clusters, config.intersections)
@@ -276,12 +278,14 @@ def find_correct_plane(lines, z_range=(0.05, 5, 0.05)):
     return float(z_value), avg_smallest_spread, mp[index], tightest_intersections
 
 
-def cluster_midpoints(z_val, gaze_vector_file):
+def cluster_midpoints(z_val, gaze_vector_file, cut_input_file):
     # gaze_vector_file is a text file containing all gaze direction info
     print('Getting Cluster Midpoints')
     if gaze_vector_file:
         with open(gaze_vector_file, 'r') as f:
             f_lines = f.readlines()
+        if cut_input_file > 0:
+            f_lines = f_lines[:cut_input_file]
         points = []
         for i in range(len(f_lines)): # do this in parallel
             text = f_lines[i]
