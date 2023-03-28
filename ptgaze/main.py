@@ -309,7 +309,7 @@ def cluster_midpoints(z_val, gaze_vector_file, cut_input_file, select_cluster):
         intersections = plane_lines_intersections(z_val, lines_3d)
         intersections = [i[0] for i in intersections]
         intersections = np.array([[float(i.x), float(i.y), float(i.z)] for i in intersections])
-        #TODO: handle the case where we manually select clusters
+        
         if select_cluster:
             cluster_picker_obj = ClusterPicker(intersections[:, 0], intersections[:, 1])
             gaze_cluster = cluster_picker_obj.gaze_cluster_index
